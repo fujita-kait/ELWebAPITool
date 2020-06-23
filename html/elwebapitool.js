@@ -1,7 +1,7 @@
-// ssng.js for SSNG(client side)
-// 2019.04.11
+// elwebapitool.js for elwebapitool(client side)
+// 2020.06.22
 
-const serverURL = "/ssng/";
+const serverURL = "/elwebapitool/";
 let tid = 0;
 let packetId = 0;
 let active_packet_id = '';
@@ -39,6 +39,9 @@ var vm = new Vue({
         buttonClickSend: function () {
             buttonClickSend(this.ipData, this.el, this.freeData);
         },
+        buttonClickSend1: function () {
+            buttonClickSend1();
+        },
         updateRbOrder: function () {
             displayLog();
         },
@@ -61,7 +64,7 @@ var vm = new Vue({
 // Show server IP address
 let request = new XMLHttpRequest();
 request.addEventListener("load", reqListener);
-request.open('GET', 'ssng/ipv4');
+request.open('GET', 'elwebapitool/ipv4');
 request.send();
 function reqListener () {
     vm.ipServer = this.responseText;
@@ -247,127 +250,57 @@ function checkInputValue(inputType, inputValue) {
     }
 }
 
-function buttonClickSend(ipData, el, freeData) {
-    if (!checkInputValue('ip', vm.ipData)) {
-        vm.ipDataStyle.color = "red";
-        window.alert("Check IP address");
-        return false;
-    } else {
-        vm.ipDataStyle.color = "black";
-    }
-    let uint8Array = [];
-    let binaryString = "";
-    uint8Array = (vm.rbInputData == "el") ? createUint8ArrayFromElData(el) : createUint8ArrayFromFreeData(freeData);
+// function buttonClickSend(ipData, el, freeData) {
+//     if (!checkInputValue('ip', vm.ipData)) {
+//         vm.ipDataStyle.color = "red";
+//         window.alert("Check IP address");
+//         return false;
+//     } else {
+//         vm.ipDataStyle.color = "black";
+//     }
+//     let uint8Array = [];
+//     let binaryString = "";
+//     uint8Array = (vm.rbInputData == "el") ? createUint8ArrayFromElData(el) : createUint8ArrayFromFreeData(freeData);
 
-    if (uint8Array !== false) {
-        const message = {ip:ipData, uint8Array:uint8Array};
+//     if (uint8Array !== false) {
+//         const message = {ip:ipData, uint8Array:uint8Array};
+//         const request = new XMLHttpRequest();
+//         request.open('PUT', serverURL + 'send');
+//         request.setRequestHeader("Content-type", "application/json");
+//         request.send(JSON.stringify(message));
+
+//       // push "Sent Data" to LOG
+//         const packet_id = 'packet-' + packetId++;
+//         const pkt = {
+//             id:packet_id,
+//             timeStamp:timeStamp(),
+//             direction:"T",
+//             ip:ipData,
+//             data:uint8Array
+//         }
+//         dataLogArray.push(pkt);
+//         displayLog();
+//     }
+// }
+
+function buttonClickSend1() {
+        const message = {uri:'uri', body:'body'};
         const request = new XMLHttpRequest();
         request.open('PUT', serverURL + 'send');
         request.setRequestHeader("Content-type", "application/json");
         request.send(JSON.stringify(message));
 
       // push "Sent Data" to LOG
-        const packet_id = 'packet-' + packetId++;
-        const pkt = {
-            id:packet_id,
-            timeStamp:timeStamp(),
-            direction:"T",
-            ip:ipData,
-            data:uint8Array
-        }
-        dataLogArray.push(pkt);
-        displayLog();
-    }
-}
-
-function createUint8ArrayFromElData(el) {
-    if (!checkInputValue('deoj', vm.el.deojData)) {
-        vm.deojDataStyle.color = "red";
-        window.alert("Check DEOJ");
-        return false;
-    } else {
-        vm.deojDataStyle.color = "black";
-    }
-    if (!checkInputValue('esv', vm.el.esvData)) {
-        vm.esvDataStyle.color = "red";
-        window.alert("Check ESV");
-        return false;
-    } else {
-        vm.esvDataStyle.color = "black";
-    }
-    if (!checkInputValue('epc', vm.el.epcData)) {
-        vm.epcDataStyle.color = "red";
-        window.alert("Check EPC");
-        return false;
-    } else {
-        vm.epcDataStyle.color = "black";
-    }
-    if (!checkInputValue('edt', vm.el.edtData)) {
-        vm.edtDataStyle.color = "red";
-        window.alert("Check EDT");
-        return false;
-    } else {
-        vm.edtDataStyle.color = "black";
-    }
-    let uint8Array = [0x10, 0x81];  // EHD
-    tid = (tid == 0xFFFF) ? 0 : (tid+1);
-    uint8Array.push(Math.floor(tid/16), tid%16);  // TID
-    uint8Array.push(0x05, 0xFF, 0x01);  // SEOJ
-    for (let data of hex2Array(el.deojData)) { // DEOJ
-        uint8Array.push(data);
-    }
-    uint8Array.push(parseInt(el.esvData, 16));  // ESV
-    uint8Array.push(0x01);  // OPC
-    uint8Array.push(parseInt(el.epcData, 16));  // EPC
-    const esv = parseInt(el.esvData, 16);
-    if ((esv == 0x62) || 
-        (esv == 0x63) || 
-        (esv == 0x71) || 
-        (esv == 0x7A) || 
-        (esv == 0x7E) || 
-        (esv == 0x50) || 
-        (esv == 0x51) || 
-        (esv == 0x52) || 
-        (esv == 0x53) || 
-        (esv == 0x5E)) {
-        uint8Array.push(0x00);  // PDC
-    } else {  // EPC= 0x60:SetI, 0x61:SetC, 0x6E:SetGet, 0x72:Get_Res, 0x73:INF, 0x74:INFC, 
-        const edtArray = hex2Array(el.edtData)
-        uint8Array.push(edtArray.length);  // PDC
-        for (let data of hex2Array(el.edtData)) {  // EDT
-            uint8Array.push(data);
-        }
-    }
-    return uint8Array;
-}
-
-function hex2Array(hex) { // hex: string of this format 0xXXXX or XXXX
-    if (hex.slice(0,2) != "0x") {
-      hex = "0x" + hex;
-    }
-    let array =[];
-    const bytes = (hex.length - 2)/2;
-    for (let i=0; i<bytes; i++) {
-      array.push(parseInt(hex.slice((i+1)*2,(i+1)*2+2), 16));
-    }
-    return array; // array: array of byte data
-}
-  
-function createUint8ArrayFromFreeData(freeData) {
-    if (!checkInputValue('free', vm.freeData)) {
-        console.log("vm.freeDataStyle.color: ", vm.freeDataStyle.color);
-        vm.freeDataStyle.color = "red";
-        window.alert("Check Free data");
-        return false;
-    } else {
-        vm.freeDataStyle.color = "black";
-    }
-    let uint8Array = [];
-    let arrayFromFreeData = freeData.split(",");
-    for (let value of arrayFromFreeData) {
-        uint8Array.push(parseInt(value.trim(), 16));
-    }
-    return uint8Array;
+        // const packet_id = 'packet-' + packetId++;
+        // const pkt = {
+        //     id:packet_id,
+        //     timeStamp:timeStamp(),
+        //     direction:"T",
+        //     ip:ipData,
+        //     data:uint8Array
+        // }
+        // dataLogArray.push(pkt);
+        // displayLog();
 }
 
 function buttonClickSearch() {
