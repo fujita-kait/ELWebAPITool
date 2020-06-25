@@ -61,7 +61,7 @@ app.get('/elwebapitool/ipv4', function(req, res){
 
 app.put('/elwebapitool/send', function(req, res){
   console.log("REST: PUT /elwebapitool/send");
-  sendRequest();
+  sendRequest(req.body.hostname, req.body.path, req.body.method, req.body.headers);
   // sendUdp(req.body.ip, req.body.uint8Array);
   res.send("Got a PUT request at /elwebapitool/send");
 });
@@ -84,20 +84,33 @@ wss.on("connection", ws => {
 });
 
 // Send REST request
-function sendRequest() {   // string:uri, string:body
+function sendRequest(hostname, path, method, headers) {   // string:uri, string:body
+  console.log("sendRequest::　hostname:",hostname, ", path:", path, ", method:", method, ", headers:", headers);
   const options = {
-    hostname: 'webapiechonet.com',
-    path: '/elapi/v1',
-    method: 'GET',
-    headers: { "X-Elapi-key" : "8cef65ec5f3c85bd8179ee9d1075fe413bbb6a2ad440d27b0be57cc03035471a" }
+    hostname: hostname, //'webapiechonet.com'
+    path: path,         //'/elapi/v1'
+    method: method,     //'GET'
+    headers: headers    // { "X-Elapi-key" : "8cef65ec5f3c85bd8179ee9d1075fe413bbb6a2ad440d27b0be57cc03035471a" }
   };
   
   const req = https.request(options, (res) => {
     console.log('statusCode:', res.statusCode);
-    console.log('headers:', res.headers);
-  
+    // console.log('headers:', res.headers);
+
     res.on('data', (d) => {
-      process.stdout.write(d);
+      // dはbuffer dataなので、string(JSON)に変換
+      let str = d.toString('utf8');
+      console.log("response:",str);
+      // JSONをobjectに変換
+      let data = JSON.parse(str);
+      // websocket: push to client(web browser)
+      wss.clients.forEach((client) => {
+        client.send(JSON.stringify({"hostname":hostname, "path":path, "method":method, "response":data}), (error) => {
+          if(error) {
+              console.log('Failed to send a message on the WebSocket channel.', error);
+          }
+        });
+      });
     });
   });
   

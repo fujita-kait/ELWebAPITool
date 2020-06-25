@@ -2,6 +2,7 @@
 // 2020.06.22
 
 const serverURL = "/elwebapitool/";
+// let idList = [];
 let tid = 0;
 let packetId = 0;
 let active_packet_id = '';
@@ -11,21 +12,34 @@ let analyzedData = "";
 var vm = new Vue({
     el: '#app',
     data: {
-        ipServer: "",
-        ipData: "224.0.23.0",
-        el: {
-            deojData: "0x013001",
-            esvData: "0x62",
-            epcData: "0x80",
-            edtData: "0x30"
-        },
-        freeData: "10,81,00,0A,05,FF,01,01,30,01,62,01,80,00",
-        ipDataStyle: {color: 'black'},
-        deojDataStyle: {color: 'black'},
-        esvDataStyle: {color: 'black'},
-        epcDataStyle: {color: 'black'},
-        edtDataStyle: {color: 'black'},
-        freeDataStyle: {color: 'black'},
+      // idList:["/aaa", "/bbb", "/ccc"], // array of service(device, bulk, group, history) object id
+      idList:[], // array of deviceId
+      resourceNameList:[], // array of resource name
+      idSelected:"",
+      resourceNameSelected:"",
+      scheme: "https",
+      serverName: "webapiechonet.com",
+      apiKey: "8cef65ec5f3c85bd8179ee9d1075fe413bbb6a2ad440d27b0be57cc03035471a",
+      prefix: "/elapi/v1",
+      method: "GET",
+      service: "",
+      id: "",
+      resourceType: "",
+      resourceName: "",
+      query: "",
+      body: "",
+      schemeStyle: {color: 'black'},
+      serverNameStyle: {color: 'black'},
+      apiKeyStyle: {color: 'black'},
+      prefixStyle: {color: 'black'},
+      methodStyle: {color: 'black'},
+      serviceStyle: {color: 'black'},
+      idStyle: {color: 'black'},
+      resourceTypeStyle: {color: 'black'},
+      resourceNameStyle: {color: 'black'},
+      queryStyle: {color: 'black'},
+      bodyStyle: {color: 'black'},
+
         rbInputData: "el",
         rbOrder: "normalOrder",
         filters: ["showGet", "showInf", "showGetres", "showSNA"],
@@ -33,42 +47,33 @@ var vm = new Vue({
         packetDetail: ""
     },
     methods: {
-        buttonClickSearch: function () {
-            buttonClickSearch();
-        },
-        buttonClickSend: function () {
-            buttonClickSend(this.ipData, this.el, this.freeData);
-        },
-        buttonClickSend1: function () {
-            buttonClickSend1();
-        },
-        updateRbOrder: function () {
-            displayLog();
-        },
-        updateFilters: function () {
-            displayLog();
-        },
-        clearLog: function () {
-            clearLog();
-        },
-        saveLog: function () {
-            saveLog();
-        },
+      // configurationのアイコンをクリックしたときの動作
+      configuration: function () {
+        window.localStorage.setItem('item1', 'ITEM1');
+        window.open('configuration.html', 'configuration', 'width=600,height=300');
+      },
+      buttonClickSend: function () {
+        buttonClickSend(this.scheme, this.serverName, this.apiKey, this.method, this.prefix,
+          this.service, this.idSelected, this.resourceType, this.resourceNameSelected, this.query, this.body);
+      },
+      updateResourceName: function () {
+        updateResourceName(this.idSelected);
+      },
+      updateRbOrder: function () {
+          displayLog();
+      },
+      clearLog: function () {
+          clearLog();
+      },
+      saveLog: function () {
+          saveLog();
+      },
 		// パケット一覧からパケット行がクリックされたときの処理 (パケット詳細を表示)
 		showPacketDetail: this.packetMonitorShowPacketDetail.bind(this),
 		// パケット一覧で矢印キーが押されたときの処理
 		upDownList: this.packetMonitorUpDownList.bind(this)
     }
 });
-
-// Show server IP address
-let request = new XMLHttpRequest();
-request.addEventListener("load", reqListener);
-request.open('GET', 'elwebapitool/ipv4');
-request.send();
-function reqListener () {
-    vm.ipServer = this.responseText;
-}
 
 // connect websocket
 console.log('ws://' + document.location.host);
@@ -77,21 +82,62 @@ ws.onopen = function(event){
     console.log("connected");
 };
 
+// websocket:受信処理
 ws.onmessage = function(event){
-    console.log("server_to_client", event.data);
-    const obj = JSON.parse(event.data);
-    if (obj.ip != vm.ipServer ) {
-        const packet_id = 'packet-' + packetId++;
-        const pkt = {
-            id:packet_id,
-            timeStamp:timeStamp(),
-            direction:"R",
-            ip:obj.ip,
-            data:obj.uint8Array
-        }
-        dataLogArray.push(pkt);
-        displayLog();
+  // console.log("server_to_client", event.data);
+  console.log("Web socket:");
+  const obj = JSON.parse(event.data);
+  console.log(" hostname:", obj.hostname);
+  console.log(" path:", obj.path);
+  console.log(" method:", obj.method);
+  console.log(" response:", obj.response);
+
+  // response処理
+
+  // GET /elapi/v1/devices
+  // responseはdevice idのarray
+  // vm.idListにdevice idをpushする 
+  let regex = /\/devices$/;   // 正規表現：行末が'/devices'
+  if (regex.test(obj.path)) {
+    idList = [""];
+    if (obj.response.devices !== undefined) {
+      for (let device of obj.response.devices) {
+        idList.push("/" + device.id);
+      }
     }
+    // console.log("idList:", idList);
+    vm.idList = idList;
+  }
+
+    // /elapi/v1/devices/<id>
+    
+    // responseはdevice description
+    // vm.resourceNameListにresource nameをpushする
+    regex = /\/devices\/([0-9]|[a-z]|[A-Z])+$/; // 正規表現'/devices/'の後、行末まで英数字
+    if (regex.test(obj.path)) {
+      resourceNameList = [""];
+      if (obj.response.properties !== undefined) {
+        for (let prpertyName of Object.keys(obj.response.properties)) {
+          resourceNameList.push("/" + prpertyName);
+        }
+      }
+      // console.log("resourceNameList:", resourceNameList);
+      vm.resourceNameList = resourceNameList;
+    }
+  
+
+  // if (obj.ip != vm.ipServer ) {
+  //     const packet_id = 'packet-' + packetId++;
+  //     const pkt = {
+  //         id:packet_id,
+  //         timeStamp:timeStamp(),
+  //         direction:"R",
+  //         ip:obj.ip,
+  //         data:obj.uint8Array
+  //     }
+  //     dataLogArray.push(pkt);
+  //     displayLog();
+  // }
 };
 
 function displayLog() {
@@ -250,69 +296,50 @@ function checkInputValue(inputType, inputValue) {
     }
 }
 
-// function buttonClickSend(ipData, el, freeData) {
-//     if (!checkInputValue('ip', vm.ipData)) {
-//         vm.ipDataStyle.color = "red";
-//         window.alert("Check IP address");
-//         return false;
-//     } else {
-//         vm.ipDataStyle.color = "black";
-//     }
-//     let uint8Array = [];
-//     let binaryString = "";
-//     uint8Array = (vm.rbInputData == "el") ? createUint8ArrayFromElData(el) : createUint8ArrayFromFreeData(freeData);
-
-//     if (uint8Array !== false) {
-//         const message = {ip:ipData, uint8Array:uint8Array};
-//         const request = new XMLHttpRequest();
-//         request.open('PUT', serverURL + 'send');
-//         request.setRequestHeader("Content-type", "application/json");
-//         request.send(JSON.stringify(message));
-
-//       // push "Sent Data" to LOG
-//         const packet_id = 'packet-' + packetId++;
-//         const pkt = {
-//             id:packet_id,
-//             timeStamp:timeStamp(),
-//             direction:"T",
-//             ip:ipData,
-//             data:uint8Array
-//         }
-//         dataLogArray.push(pkt);
-//         displayLog();
-//     }
-// }
-
-function buttonClickSend1() {
-        const message = {uri:'uri', body:'body'};
-        const request = new XMLHttpRequest();
-        request.open('PUT', serverURL + 'send');
-        request.setRequestHeader("Content-type", "application/json");
-        request.send(JSON.stringify(message));
-
-      // push "Sent Data" to LOG
-        // const packet_id = 'packet-' + packetId++;
-        // const pkt = {
-        //     id:packet_id,
-        //     timeStamp:timeStamp(),
-        //     direction:"T",
-        //     ip:ipData,
-        //     data:uint8Array
-        // }
-        // dataLogArray.push(pkt);
-        // displayLog();
+function configuration() {
+  console.log("configuration");
 }
 
-function buttonClickSearch() {
-    const ipData = "224.0.23.0";
-    const el = {
-            deojData: "0x0EF001",
-            esvData: "0x62",
-            epcData: "0xD6",
-            edtData: ""
-        };
-    const freeData="10,81,00,04,05,FF,01,0E,F0,01,62,01,D6,00";
-    buttonClickSend(ipData, el, freeData);
+function updateResourceName() {
+  console.log("updateResourceName");
+}
+
+// GUIの入力データをREST PUT /elwebapitool/send
+function buttonClickSend(scheme, serverName, apiKey, method, prefix, 
+  service, idSelected, resourceType, resourceNameSelected, query, body) {
+  console.log("buttonClickSend");
+  console.log(" scheme:", scheme,", serverName:", serverName, ", apiKey:", apiKey);
+  console.log(" method:", method, ", prefix:", prefix, ", service:", service, ", idSelected:", idSelected, ", resourceType:", resourceType);
+  console.log(" resourceName:", resourceNameSelected, ", query:", query, ", body:", body);
+  
+  let path = prefix;
+  if (service !== "") {
+    path += service;
+    if (idSelected !== "") {
+      path += idSelected;
+      if (resourceType !== "") {
+        path += resourceType;
+        if (resourceNameSelected !== "") {
+          path += resourceNameSelected;
+          if (query !== "") {
+            path += ("?"+query);
+          }
+        }
+      }
+    }
+  }
+  console.log("path:",path);
+  const message = {
+    hostname:serverName,
+    method:method, 
+    path:path,
+    headers: { "X-Elapi-key": apiKey }, 
+    body:'body'};
+  console.log("message: ", message);
+  const request = new XMLHttpRequest();
+  request.open('PUT', serverURL + 'send');
+  request.setRequestHeader("Content-type", "application/json");
+  request.send(JSON.stringify(message));
 }
 
 function saveLog() {

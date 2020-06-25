@@ -13,7 +13,7 @@ Node.jsがインストールされたWindows PC, Macまたは Raspberry Pi
 
 ## Launch
 1. ターミナルで "elwebapi" を実行する   
-2. Web Browserを起動し、localhost:3000 をアクセスする  
+2. Web Browserを起動し、localhost:3010 をアクセスする  
 3. ELWebAPIToolのGUIが表示される(Fig. 1)  
 
 ![gui1](https://raw.githubusercontent.com/KAIT-HEMS/ssng-node/master/_graphics/gui1.png "gui1")  
