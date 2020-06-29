@@ -16,7 +16,7 @@
     <div class="navbar navbar-dark bg-dark shadow-sm">
       <div class="container d-flex justify-content-between">
         <a href="#" class="navbar-brand">
-          <h1 id="note-title" class="h6"></h1>
+          <h1 id="note-title" class="h6">Settings</h1>
         </a>
       </div>
     </div>
@@ -24,7 +24,56 @@
   <main role="main">
     <div class="pt-3">
       <div class="container">
-<!--        <pre id="note-content"></pre>-->
+        <form>
+          <div class="form-row">
+            <div class="input-group mb-2 mx-1">
+              <div class="input-group-prepend">
+                <div class="input-group-text">scheme</div>
+              </div>
+              <div class="form-check mt-2 mx-2">
+                <input class="form-check-input" type="radio" name="scheme" id="https" value="https">
+                <label class="form-check-label" for="https">
+                  https
+                </label>
+              </div>
+              <div class="form-check mt-2 mx-2">
+                <input class="form-check-input" type="radio" name="scheme" id="http" value="http" disabled>
+                <label class="form-check-label" for="http">
+                  http
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="input-group mb-2 mx-1">
+              <div class="input-group-prepend">
+                <div class="input-group-text">server</div>
+              </div>
+              <input type="text" class="form-control" id="server" >
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="input-group mb-2 mx-1">
+              <div class="input-group-prepend">
+                <div class="input-group-text">prefix</div>
+              </div>
+              <input type="text" class="form-control" id="prefix" >
+            </div>
+          </div>
+          
+          <div class="form-row">
+            <div class="input-group mb-2 mx-1">
+              <div class="input-group-prepend">
+                <div class="input-group-text">apiKey</div>
+              </div>
+              <input type="text" class="form-control" id="apiKey" >
+            </div>
+          </div>
+          <button type="button" class="btn btn-Set" onclick="buttonUpdate()">Update</button>
+          <button type="button" class="btn btn-Cancel" onclick="buttonCancel()">Cancel</button>
+
         <p id="note-content"></p>
       </div>
     </div>
@@ -45,12 +94,36 @@
     }, false);
 
     function showContents() {
-      let title = window.localStorage.getItem('note-title');
-      let content = window.localStorage.getItem('note-content');
-      $('#note-title').text(title);
-      $('#note-content').text(content);
+      console.log("config1:", window.localStorage.getItem('config'));
+      let config = JSON.parse(window.localStorage.getItem('config'));
+      console.log("config2:", config);
+      https.checked = true;
+      server.value = config.server;
+      prefix.value = config.prefix;
+      apiKey.value = config.apiKey;
+      // let scheme = window.localStorage.getItem('scheme');
+      // let server = window.localStorage.getItem('server');
+      // let prefix = window.localStorage.getItem('prefix');
+      // console.log("config:", scheme, server, prefix)
+      // $('#server').text(server);
+      // $('#prefix').text(prefix);
     }
 
+    function buttonUpdate(){
+      const config = { "scheme":'https', "server":server.value, "prefix":prefix.value, "apiKey":apiKey.value };
+      console.log("config3:", config);
+      window.localStorage.setItem('Y', "configY");
+      let tmp = window.localStorage.getItem('Y')
+      console.log("config4:", tmp);
+      window.localStorage.setItem('X', {"aaa":"configX"});
+      tmp = window.localStorage.getItem('X')
+      console.log("config5:", tmp, tmp.aaa);
+      window.opener.postMessage( "updateConfig", "*" );
+      // window.close();
+    }
+    function buttonCancel(){
+      window.close();
+    }
   </script>
 </body>
 

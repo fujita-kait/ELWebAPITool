@@ -2,7 +2,6 @@
 // 2020.06.22
 
 const serverURL = "/elwebapitool/";
-// let idList = [];
 let tid = 0;
 let packetId = 0;
 let active_packet_id = '';
@@ -49,8 +48,7 @@ var vm = new Vue({
     methods: {
       // configurationのアイコンをクリックしたときの動作
       configuration: function () {
-        window.localStorage.setItem('item1', 'ITEM1');
-        window.open('configuration.html', 'configuration', 'width=600,height=300');
+        window.open('configuration.html', 'configuration', 'width=800,height=400');
       },
       buttonClickSend: function () {
         buttonClickSend(this.scheme, this.serverName, this.apiKey, this.method, this.prefix,
@@ -79,14 +77,67 @@ var vm = new Vue({
 console.log('ws://' + document.location.host);
 let ws = new WebSocket('ws://' + document.location.host);
 ws.onopen = function(event){
-    console.log("connected");
+    console.log(" connected");    
 };
+
+// server側のconfig.jsonのデータをリクエストする。その後setStrage
+config();
+
+// configuration.htmlからのpostMessageの受信
+var updateConfig = function ( event ) {
+	// 送信側のオリジン
+	var origin = event.origin ;
+
+	// 信頼できるオリジン以外からのメッセージを無視する (重要)
+	// if( origin !== "https://example.com" ) return false ;
+
+	// 送られてきたメッセージ
+	var message = event.data;	// "Hello!!"
+  console.log( "メッセージを受信しました!! → " + message );
+  console.log("config3:", window.localStorage.getItem('config'));
+}
+window.addEventListener( "message", updateConfig ) ;
+
+// XHR 非同期処理
+function config(){
+  function reqListener () {
+    console.log("config2:", this.responseText);
+    window.localStorage.setItem('config', this.responseText);
+  }
+  var oReq = new XMLHttpRequest();
+  oReq.addEventListener("load", reqListener);
+  oReq.open('GET', serverURL + 'config');
+  oReq.send();
+
+
+  // const request = new XMLHttpRequest();
+  // request.open('GET', serverURL + 'config', false);
+  // request.send();
+  // console.log("config:", request.responseText);
+  // const configData = JSON.parse(request.responseText);
+  // window.localStorage.setItem('scheme', configData.scheme);
+  // window.localStorage.setItem('server', configData.server);
+  // window.localStorage.setItem('prefix', configData.prefix);
+}
+
+// XHR 同期処理
+// function config(){
+//   const request = new XMLHttpRequest();
+//   request.open('GET', serverURL + 'config', false);
+//   request.send();
+//   console.log("config:", request.responseText);
+//   const configData = JSON.parse(request.responseText);
+//   window.localStorage.setItem('scheme', configData.scheme);
+//   window.localStorage.setItem('server', configData.server);
+//   window.localStorage.setItem('prefix', configData.prefix);
+// }
 
 // websocket:受信処理
 ws.onmessage = function(event){
   // console.log("server_to_client", event.data);
   console.log("Web socket:");
   const obj = JSON.parse(event.data);
+
   console.log(" hostname:", obj.hostname);
   console.log(" path:", obj.path);
   console.log(" method:", obj.method);
@@ -109,79 +160,68 @@ ws.onmessage = function(event){
     vm.idList = idList;
   }
 
-    // /elapi/v1/devices/<id>
-    
-    // responseはdevice description
-    // vm.resourceNameListにresource nameをpushする
-    regex = /\/devices\/([0-9]|[a-z]|[A-Z])+$/; // 正規表現'/devices/'の後、行末まで英数字
-    if (regex.test(obj.path)) {
-      resourceNameList = [""];
-      if (obj.response.properties !== undefined) {
-        for (let prpertyName of Object.keys(obj.response.properties)) {
-          resourceNameList.push("/" + prpertyName);
-        }
+  // GET /elapi/v1/devices/<id>
+  // responseはdevice description
+  // vm.resourceNameListにresource nameをpushする
+  regex = /\/devices\/([0-9]|[a-z]|[A-Z])+$/; // 正規表現'/devices/'の後、行末まで英数字
+  if (regex.test(obj.path)) {
+    resourceNameList = [""];
+    if (obj.response.properties !== undefined) {
+      for (let prpertyName of Object.keys(obj.response.properties)) {
+        resourceNameList.push("/" + prpertyName);
       }
-      // console.log("resourceNameList:", resourceNameList);
-      vm.resourceNameList = resourceNameList;
     }
+    // console.log("resourceNameList:", resourceNameList);
+    vm.resourceNameList = resourceNameList;
+  }
   
+  // LOGに追加
+  const packet_id = 'packet-' + packetId++;
+  const pkt = {
+      id:packet_id,
+      timeStamp:timeStamp(),
+      direction:"RES",
+      data:obj
+  }
+  dataLogArray.push(pkt);
+  displayLog();
 
-  // if (obj.ip != vm.ipServer ) {
-  //     const packet_id = 'packet-' + packetId++;
-  //     const pkt = {
-  //         id:packet_id,
-  //         timeStamp:timeStamp(),
-  //         direction:"R",
-  //         ip:obj.ip,
-  //         data:obj.uint8Array
-  //     }
-  //     dataLogArray.push(pkt);
-  //     displayLog();
-  // }
 };
 
 function displayLog() {
-    let log = [];
-    for (let dataLog of dataLogArray) {
-        const esv = dataLog.data[10];
-        const pkt = {
-            id: dataLog.id,
-            timeStamp: dataLog.timeStamp,
-            direction: dataLog.direction,
-            address: dataLog.ip,
-            hex: elFormat(dataLog.data)
-        }
-        if ((dataLog.direction == "T") || filterEsv(esv)) {
-            log.push(pkt);
-        }
+  let log = [];
+  for (let dataLog of dataLogArray) {
+    let pkt={};
+    if (dataLog.direction == 'REQ') {
+      pkt = 
+        {
+          id: dataLog.id,
+          timeStamp: dataLog.timeStamp,
+          direction: dataLog.direction,
+          hex: dataLog.data.method+" https://"+dataLog.data.hostname+dataLog.data.path
+        };
+    } else {
+      pkt = 
+        {
+          id: dataLog.id,
+          timeStamp: dataLog.timeStamp,
+          direction: dataLog.direction,
+          hex: dataLog.data.response
+        };
     }
-    if (vm.rbOrder == "reverseOrder") {
-        log.reverse();
-    }
-    vm.packet_list = log;
-    // clear packet selection
+    log.push(pkt);
+  }
+  if (vm.rbOrder == "reverseOrder") {
+    log.reverse();
+  }
+  vm.packet_list = log;
+
+  // clear packet selection
 	if (this.active_packet_id) {
 		$('#' + this.active_packet_id).removeClass('active');
 		this.active_packet_id = '';
 	}
-    vm.packetDetail = "";    
-    return;
-
-    function filterEsv(esv) {
-      if (!vm.filters.includes("showGet") && (esv == 0x62)) {
-        return false;
-      }
-      if (!vm.filters.includes("showInf") && (esv == 0x73)) {
-        return false;
-      }
-      if (!vm.filters.includes("showGetres") && (esv == 0x72)) {
-        return false;
-      }
-      if (!vm.filters.includes("showSNA") && ((esv == 0x50) || (esv == 0x51) || (esv == 0x52) || (esv == 0x53) || (esv == 0x5E))) {
-        return false;
-      }
-      return true;
-    }
+  vm.packetDetail = "";
 }
 
 function timeStamp() {
@@ -340,6 +380,18 @@ function buttonClickSend(scheme, serverName, apiKey, method, prefix,
   request.open('PUT', serverURL + 'send');
   request.setRequestHeader("Content-type", "application/json");
   request.send(JSON.stringify(message));
+
+  // LOGに追加
+  const packet_id = 'packet-' + packetId++;
+  const pkt = {
+      id:packet_id,
+      timeStamp:timeStamp(),
+      direction:"REQ",
+      data:message
+  }
+  console.log("pkt:", pkt);
+  dataLogArray.push(pkt);
+  displayLog();
 }
 
 function saveLog() {

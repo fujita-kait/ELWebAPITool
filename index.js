@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 
 // index.js for ELWebAPITool
-// 2020.06.22
+// 2020.06.29
 // access http://localhost:3010/elwebapitool
 
-const version = "2019.06.22";
+const version = "2019.06.29";
+const portNumber = 3010;
 
 let express = require('express');
 let app = express();
@@ -15,12 +16,17 @@ const https = require('https');
 const WebSocket = require("ws").Server;
 const wss = new WebSocket({ server });
 
-const port = process.env.PORT || 3010;
+const port = process.env.PORT || portNumber;
 const elwebapiServer = 'https://webapiechonet.com';
 
-// get local IP address(ipv4)
-const localAddress = getLocalAddress();
-const ipv4 = localAddress.ipv4[0].address
+let config ={}; // config.json data
+
+// read config.json
+fs.readFile('config.json', 'utf8', (err, data) => {
+  if (err) throw err;
+  config = JSON.parse(data);
+  console.log("config.json:", config);
+});
 
 // create a folder "log" to save log files
 fs.readdir('.', function(err, files){
@@ -32,33 +38,46 @@ fs.readdir('.', function(err, files){
     }
 });
 
+// web serverの起動
 server.listen(port, function(){
   console.log("*** elwebapitool " + version + ", http://localhost:" + port + " ***");
 });
 
 // location of static files
-// app.use(express.static('html'))
 app.use(express.static(__dirname + '/html'))
 
 // middleware for express
 app.use(express.json());
 
 // routing for express
+// GET /  
 app.get('/', function(req, res){
   console.log("REST: GET /index.html");
   res.sendFile(__dirname + '/html/index.html');
 });
 
+// GET /index
 app.get('/index', function(req, res){
   console.log("REST: GET /index.html");
   res.sendFile(__dirname + '/html/index.html');
 });
 
-app.get('/elwebapitool/ipv4', function(req, res){
-  console.log("REST: GET /elwebapitool/ipv4");
-  res.send(ipv4);
+// GET /elwebapitool/config
+// request config.json data
+app.get('/elwebapitool/config', function(req, res){
+  console.log("REST: GET /elwebapitool/config");
+  res.send(config);
 });
 
+// PUT /elwebapitool/config
+// request config.json data update
+app.put('/elwebapitool/config', function(req, res){
+  console.log("REST: PUT /elwebapitool/config");
+  updateConfig(req.body.config);
+  res.send("Got a PUT request at /elwebapitool/config");
+});
+
+// EL web api serverへのREST送信のリクエスト
 app.put('/elwebapitool/send', function(req, res){
   console.log("REST: PUT /elwebapitool/send");
   sendRequest(req.body.hostname, req.body.path, req.body.method, req.body.headers);
@@ -66,6 +85,7 @@ app.put('/elwebapitool/send', function(req, res){
   res.send("Got a PUT request at /elwebapitool/send");
 });
 
+// Log保存リクエスト
 app.post('/elwebapitool/saveLog', function(req, res){
   console.log("REST: POST /elwebapitool/saveLog");
   saveLog(req.body.log);
@@ -83,7 +103,17 @@ wss.on("connection", ws => {
     });
 });
 
-// Send REST request
+// config.jsonのupdate
+function updateConfig(newConfig){ // newConfig:config.json用のデータ
+  // writeFile config.json
+  const buffer = new Buffer(data);
+  fs.writeFile("config.json", buffer, (err) => {
+    if (err) console.log("Error: Can not save config.json.");
+    console.log('config.json has been saved!');
+  });
+}
+
+// EL web api serverへのREST送信
 function sendRequest(hostname, path, method, headers) {   // string:uri, string:body
   console.log("sendRequest::　hostname:",hostname, ", path:", path, ", method:", method, ", headers:", headers);
   const options = {
@@ -141,26 +171,3 @@ function saveLog(data) {  // string:data
     console.log('The file has been saved!');
   });
 }
-
-// Get Local IP Address
-function getLocalAddress() {
-    let ifacesObj = {}
-    ifacesObj.ipv4 = [];
-    ifacesObj.ipv6 = [];
-    let interfaces = os.networkInterfaces();
-    for (let dev in interfaces) {
-        interfaces[dev].forEach(function(details){
-            if (!details.internal){
-                switch(details.family){
-                    case "IPv4":
-                        ifacesObj.ipv4.push({name:dev, address:details.address});
-                    break;
-                    case "IPv6":
-                        ifacesObj.ipv6.push({name:dev, address:details.address})
-                    break;
-                }
-            }
-        });
-    }
-    return ifacesObj;
-};
