@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 // index.js for ELWebAPITool
-// 2020.06.29
+// 2020.07.02
 // access http://localhost:3010/elwebapitool
 
 const version = "2019.06.29";
@@ -21,6 +21,7 @@ const elwebapiServer = 'https://webapiechonet.com';
 
 let config ={}; // config.json data
 
+// 設定データの読み込み
 // read config.json
 fs.readFile('config.json', 'utf8', (err, data) => {
   if (err) throw err;
@@ -126,16 +127,20 @@ function sendRequest(hostname, path, method, headers) {   // string:uri, string:
   const req = https.request(options, (res) => {
     console.log('statusCode:', res.statusCode);
     // console.log('headers:', res.headers);
-
+    let resStr = '';
     res.on('data', (d) => {
       // dはbuffer dataなので、string(JSON)に変換
       let str = d.toString('utf8');
-      console.log("response:",str);
+      // console.log("response:",str);
+      resStr += str;
+    });
+    res.on('end', () => {
+      console.log("response:",resStr);
       // JSONをobjectに変換
-      let data = JSON.parse(str);
+      let data = JSON.parse(resStr);
       // websocket: push to client(web browser)
       wss.clients.forEach((client) => {
-        client.send(JSON.stringify({"hostname":hostname, "path":path, "method":method, "response":data}), (error) => {
+        client.send(JSON.stringify({"hostname":hostname, "path":path, "method":method, "statusCode":res.statusCode, "response":data}), (error) => {
           if(error) {
               console.log('Failed to send a message on the WebSocket channel.', error);
           }
