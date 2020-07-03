@@ -4,7 +4,7 @@
 // 2020.07.02
 // access http://localhost:3010/elwebapitool
 
-const version = "2019.06.29";
+const version = "2019.07.02";
 const portNumber = 3010;
 
 let express = require('express');
@@ -81,8 +81,7 @@ app.put('/elwebapitool/config', function(req, res){
 // EL web api serverへのREST送信のリクエスト
 app.put('/elwebapitool/send', function(req, res){
   console.log("REST: PUT /elwebapitool/send");
-  sendRequest(req.body.hostname, req.body.path, req.body.method, req.body.headers);
-  // sendUdp(req.body.ip, req.body.uint8Array);
+  sendRequest(req.body.hostname, req.body.path, req.body.method, req.body.headers, req.body.body);
   res.send("Got a PUT request at /elwebapitool/send");
 });
 
@@ -115,12 +114,13 @@ function updateConfig(newConfig){ // newConfig:config.json用のデータ
 }
 
 // EL web api serverへのREST送信
-function sendRequest(hostname, path, method, headers) {   // string:uri, string:body
-  console.log("sendRequest::　hostname:",hostname, ", path:", path, ", method:", method, ", headers:", headers);
+function sendRequest(hostname, path, method, headers, body) {   // string:uri, string:body
+  console.log("sendRequest::　hostname:",hostname, ", path:", path, ", method:", method, ", headers:", headers, ", body:", body);
+
   const options = {
     hostname: hostname, //'webapiechonet.com'
     path: path,         //'/elapi/v1'
-    method: method,     //'GET'
+    method: method,     //'GET', 'PUT', 'POST' or 'DELETE'
     headers: headers    // { "X-Elapi-key" : "8cef65ec5f3c85bd8179ee9d1075fe413bbb6a2ad440d27b0be57cc03035471a" }
   };
   
@@ -152,6 +152,11 @@ function sendRequest(hostname, path, method, headers) {   // string:uri, string:
   req.on('error', (e) => {
     console.error(e);
   });
+
+  // Write data to request body
+  if ((body !== "") && (body !== undefined)){
+    req.write(body);
+  }
   req.end();
 }
 

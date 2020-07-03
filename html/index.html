@@ -20,6 +20,20 @@
     .card-header {
       padding: 0.1em 1em;
     }
+    #request-response-body {
+      margin: 0;
+      padding: 0;
+    }
+    #request-response-wrapper {
+      height: 20em;
+      overflow-y: scroll;
+    }
+    #request-response-list li {
+      font-family: Consolas, 'Courier New', Courier, Monaco, monospace;
+      font-size: 90%;
+      padding: 0.2em 1em;
+      cursor: pointer;
+    }
     #packet-monitor-body {
       margin: 0;
       padding: 0;
@@ -55,6 +69,8 @@
 </header>
 <main>
 <div class="container" id="app">
+
+  <!-- input data -->
   <div class="card mb-3">
     <!-- Tool header-->
     <div class="card-header py-1">
@@ -131,7 +147,28 @@
     </div>
   </div>
 
-<!-- LOG -->
+  <!-- Request & Response -->
+  <div class="card">
+    <!-- R&R header-->
+    <div class="card-header py-1">
+      <div class="row">
+        <div class="col-auto h5 mt-2">Request & Response</div>
+      </div>
+    </div>
+
+    <!-- R&R body -->
+    <div class="card-body" id="request-response-body">
+      <div id="request-response-wrapper">
+        <ul class="list-group"  id="request-response-list">
+          <li class="list-group-item" >{{request}}</li>
+          <li class="list-group-item" >{{statusCode}}</li>
+          <li class="list-group-item" ><pre>{{response}}</pre></li>
+        </ul>
+      </div>
+    </div>
+
+
+  <!-- LOG -->
   <div class="card">
     <!-- LOG header-->
     <div class="card-header py-1">
@@ -166,7 +203,7 @@
       </div>
     </div>
 
-<!-- LOG body -->
+    <!-- LOG body -->
     <div class="card-body" id="packet-monitor-body">
       <div id="packet-list-wrapper">
         <ul class="list-group"  id="packet-list" v-on:keyup.stop v-on:keydown.stop>

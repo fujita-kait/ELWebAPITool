@@ -29,14 +29,14 @@ let vm = new Vue({
     resourceTypeSelected: "",
     resourceNameList: [], // array of resource name
     resourceNameSelected:"",
-    // id: "",
-    // resourceType: "",
-    // resourceName: "",
     query: "",
     body: "",
+    request: "request",
+    statusCode: "status code",
+    response: "response",
     rbOrder: "normalOrder",
 
-    rbInputData: "el",
+    // rbInputData: "el",
     packet_list: [],
     packetDetail: "",
     
@@ -59,6 +59,8 @@ let vm = new Vue({
     // configuration: function () {
     //   window.open('configuration.html', 'configuration', 'width=800,height=400');
     // },
+
+    // SENDボタンがクリックされたときのメソッド
     buttonClickSend: function () {
       buttonClickSend(this.scheme, this.elApiServer, this.apiKey, this.methodSelected, this.prefix,
         this.serviceSelected, this.idSelected, this.resourceTypeSelected, this.resourceNameSelected, this.query, this.body);
@@ -124,7 +126,7 @@ oReq.send();
 // websocket:受信処理
 ws.onmessage = function(event){
   // console.log("server_to_client", event.data);
-  console.log("Web socket:");
+  console.log("Web socketの受信:");
   const obj = JSON.parse(event.data);
 
   console.log(" hostname:", obj.hostname);
@@ -132,11 +134,13 @@ ws.onmessage = function(event){
   console.log(" method:", obj.method);
   console.log(" status code:", obj.statusCode);
   console.log(" response:", obj.response);
+  vm.statusCode = "status code: " + obj.statusCode;
+  vm.response = obj.response;
 
   // ECHONET Lite Web Api Serverからのresponse処理
   let regex;
+
   // GET /elapi/v1
-  // responseは
   // vm.serviceListにserviceをpushする 
   regex = /\/v1$/;   // 正規表現：行末が'/v1'
   if (regex.test(obj.path)) {
@@ -147,12 +151,13 @@ ws.onmessage = function(event){
         serviceList.push("/" + service.name);
       }
     }
-    console.log("serviceList:", serviceList);
+    console.log("serviceListの更新:", serviceList);
     vm.serviceList = serviceList;
+    // 入力フィールドserviceの表示項目の更新
+    vm.serviceSelected = (serviceList[1]) ? serviceList[1] : "";
   }
 
   // GET /elapi/v1/devices
-  // responseはdevice idのarray
   // vm.idListにdevice idをpushする 
   regex = /\/devices$/;   // 正規表現：行末が'/devices'
   if (regex.test(obj.path)) {
@@ -163,9 +168,11 @@ ws.onmessage = function(event){
         idList.push("/" + device.id);
       }
     }
-    // console.log("idList:", idList);
-    idList.sort();
-    vm.idList = idList;
+    console.log("idListの更新:", idList);
+    // idList.sort();
+    vm.idList = idList.sort();
+    // 入力フィールドidの表示項目の更新
+    vm.idSelected = (idList[1]) ? idList[1] : "";
   }
 
   // GET /elapi/v1/devices/<id>
@@ -192,18 +199,12 @@ ws.onmessage = function(event){
     if (obj.response.events !== undefined) {
       resourceTypeList.push("/events");
     }
-    console.log("resourceTypeList:", resourceTypeList);
+    console.log("resourceTypeListの更新:", resourceTypeList);
     vm.resourceTypeList = resourceTypeList;
-
-    // resourceNameListの処理
-    // resourceNameList = [""];
-    // if (obj.response.properties !== undefined) {
-    //   for (let propertyName of Object.keys(obj.response.properties)) {
-    //     resourceNameList.push("/" + propertyName);
-    //   }
-    // }
-    // // console.log("resourceNameList:", resourceNameList);
-    // vm.resourceNameList = resourceNameList;
+    
+    // 入力フィールドResouce TypeとResource Nameの表示項目の更新
+    resourceTypeIsUpdated("/"+deviceId, "/properties");
+    vm.resourceTypeSelected = (resourceTypeList[1]) ? resourceTypeList[1] : "";
   }
   
   // LOGに追加
@@ -303,73 +304,7 @@ function timeStamp() {
 //     }
 // }
 
-// function elFormat(uint8Array) {
-//     let elString = "";
-//     for (let value of uint8Array) {
-//       elString += toStringHex(value, 1);
-//     }
-//     elString = strIns(elString, 4, " ");
-//     elString = strIns(elString, 9, " ");
-//     elString = strIns(elString, 16, " ");
-//     elString = strIns(elString, 23, " ");
-//     elString = strIns(elString, 26, " ");
-//     elString = strIns(elString, 29, " ");
-//     elString = strIns(elString, 32, " ");
-//     elString = strIns(elString, 35, " ");
-//     return elString;
-// }
 
-// // 数値(number)を16進数表記の文字列に変換する
-// // 数値のbyte数は(bytes)
-// // example: toStringHex(10, 1) => "0A"
-// // example: toStringHex(10, 2) => "000A"
-// function toStringHex(number, bytes) {
-//   let str = number.toString(16).toUpperCase();
-//   while (str.length < 2*bytes) { str = "0" + str; }
-//       return str;
-// }
-
-// // stringに文字列を挿入
-// function strIns(str, idx, val){ // str:string（元の文字列）, idx:number（挿入する位置）, val:string（挿入する文字列）
-//     var res = str.slice(0, idx) + val + str.slice(idx);
-//     return res;
-// }
-
-// // Check input value of text field
-// // argument: inputType:string, enum("ip", "deoj", "esv", "epc", "edt", "free")
-// // get text data from text input field of "inputType"
-// // return value: boolean
-// function checkInputValue(inputType, inputValue) {
-//     let regex;
-//     switch (inputType) {
-//       case "ip":
-//         regex = /^(([1-9]?[0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([1-9]?[0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$/;
-//         break;
-//       case "deoj":
-//         regex = /^(0x)?(\d|[a-f]|[A-F]){6}$/;
-//         break;
-//       case "esv":
-//       case "epc":
-//         regex = /^(0x)?(\d|[a-f]|[A-F]){2}$/;
-//         break;
-//       case "edt":
-//         regex = /^((0x)?((\d|[a-f]|[A-F]){2}){1,})?$/;
-//         break;
-//       case "free":
-//         regex = /^((\d|[a-f]|[A-F]){2},\s*){1,}(\d|[a-f]|[A-F]){2}\s*$/;
-//         break;
-//       default:
-//     }
-//     if (regex.test(inputValue)) {
-//         return true;
-//     }else{
-//         return false;
-//     }
-// }
-
-// function configuration() {
-//   console.log("configuration");
-// }
 
 function methodIsUpdated(methodSelected, serviceSelected, idSelected, resourceTypeSelected){
   switch (methodSelected) {
@@ -434,8 +369,10 @@ function serviceIsUpdated(serviceSelected) {
   }
 }
 
+// 入力フィールドidの値が変更された場合の処理
+// 選択されたidのdevice descriptionが存在する場合は、resourceTypeとresourceNameを更新する
 function idIsUpdated(idSelected) {
-  console.log("idIsUpdated", idSelected);
+  console.log("idが更新されました。", idSelected);
   if (idSelected == "") {
     vm.resourceTypeList = [""];
     vm.resourceNameList = [""];
@@ -446,8 +383,10 @@ function idIsUpdated(idSelected) {
     vm.resourceNameSelected = "";
 
     const deviceId = idSelected.slice(1); // remove "/"
-    if (deviceDescriptions[deviceId] !== undefined){
-      const deviceDescription = deviceDescriptions[deviceId];
+    const deviceDescription = deviceDescriptions[deviceId];
+
+    if (deviceDescription !== undefined){
+      // Update resourceTypeList
       let resourceTypeList = [""];
       if (deviceDescription.properties !== undefined) {
         resourceTypeList.push("/properties");
@@ -460,18 +399,21 @@ function idIsUpdated(idSelected) {
       }
       console.log("resourceTypeList:", resourceTypeList);
       vm.resourceTypeList = resourceTypeList;
+      vm.resourceTypeSelected = (resourceTypeList[1]) ? resourceTypeList[1] : "";
+      resourceTypeIsUpdated(idSelected, vm.resourceTypeSelected);
+      vm.resourceNameSelected = (vm.resourceNameList[1]) ? vm.resourceNameList[1] : "";
     }
   }
 }
 
 function resourceTypeIsUpdated(idSelected, resourceTypeSelected) {
   console.log("resourceTypeIsUpdated",resourceTypeSelected);
-  vm.resourceNameSelected = "";
   if (resourceTypeSelected == "") {
     // resource nameをクリア
     vm.resourceNameList = [""];
   }
 
+  let resourceNameList = [];
   // "Resource Type" で "properties"が選択されたら "Resource Name" に property name を設定
   if (resourceTypeSelected == "/properties") {
     // resourceNameListを作成
@@ -505,6 +447,7 @@ function resourceTypeIsUpdated(idSelected, resourceTypeSelected) {
       vm.resourceNameList = resourceNameList;    
     }
   }
+  vm.resourceNameSelected = (resourceNameList[1]) ? resourceNameList[1] : "";
 }
 
 function resourceNameIsUpdated(resourceNameSelected) {
@@ -512,10 +455,10 @@ function resourceNameIsUpdated(resourceNameSelected) {
   // update "display schema"
 }
 
-// GUIの入力データをREST PUT /elwebapitool/send
+// GUIのSENDボタンをクリックした場合のファンクション：入力データをREST PUT /elwebapitool/send
 function buttonClickSend(scheme, elApiServer, apiKey, methodSelected, prefix, 
   serviceSelected, idSelected, resourceTypeSelected, resourceNameSelected, query, body) {
-  console.log("buttonClickSend");
+  console.log("SENDボタンがクリックされました。");
   console.log(" scheme:", scheme,", elApiServer:", elApiServer, ", apiKey:", apiKey);
   console.log(" methodSelected:", methodSelected, ", prefix:", prefix, ", serviceSelected:", serviceSelected, ", idSelected:", idSelected, ", resourceTypeSelected:", resourceTypeSelected);
   console.log(" resourceName:", resourceNameSelected, ", query:", query, ", body:", body);
@@ -536,18 +479,38 @@ function buttonClickSend(scheme, elApiServer, apiKey, methodSelected, prefix,
       }
     }
   }
-  console.log("path:",path);
-  const message = {
-    hostname:elApiServer,
-    method:methodSelected, 
-    path:path,
-    headers: { "X-Elapi-key": apiKey }, 
-    body:'body'};
-  console.log("message: ", message);
+  console.log(" path:",path);
+
+  let message = {};
+  if(methodSelected == "GET"){
+     message = {
+      hostname: elApiServer,
+      method: methodSelected, 
+      path: path,
+      headers: { "X-Elapi-key": apiKey }, 
+      body: ""
+    };  
+  }
+  if((methodSelected == "PUT")||(methodSelected == "POST")){
+     message = {
+      hostname: elApiServer,
+      method: methodSelected, 
+      path: path,
+      headers: {
+        "X-Elapi-key": apiKey,
+        "Content-Type": "application/json",
+        "Content-Length": body.length
+      }, 
+      body: body
+    };  
+  }
+
+  console.log(" message: ", message);
   const request = new XMLHttpRequest();
   request.open('PUT', serverURL + 'send');
   request.setRequestHeader("Content-type", "application/json");
   request.send(JSON.stringify(message));
+  vm.request = message.method + " " + vm.scheme + "://" +message.hostname + message.path;
 
   // LOGに追加
   const packet_id = 'packet-' + packetId++;
@@ -557,7 +520,7 @@ function buttonClickSend(scheme, elApiServer, apiKey, methodSelected, prefix,
       direction:"REQ",
       data:message
   }
-  console.log("pkt:", pkt);
+  console.log(" pkt:", pkt);
   dataLogArray.push(pkt);
   displayLog();
 }
@@ -565,7 +528,9 @@ function buttonClickSend(scheme, elApiServer, apiKey, methodSelected, prefix,
 function saveLog() {
     let log = "";
     for (let dataLog of dataLogArray) {
-      log = log + dataLog.timeStamp + "," + dataLog.direction + "," + dataLog.ip + "," + elFormat(dataLog.data) + "\n";
+      console.log("dataLog:", dataLog);
+      log = log + dataLog.timeStamp + "," + dataLog.direction + "," + 
+        dataLog.data.method + "," + vm.scheme + "://" + dataLog.data.hostname + dataLog.data.path + "\n";
     }
     const message = {log:log};
     const request = new XMLHttpRequest();
