@@ -1,6 +1,6 @@
 # ELWebAPITool
 
-2020.07.02
+2020.07.03
 
 ## Abstract
 ELWebAPIToolは、ECHONET Lite WebAPIの送受信ツールである。Node.jsのアプリケーション。  
@@ -9,10 +9,21 @@ ELWebAPIToolは、ECHONET Lite WebAPIの送受信ツールである。Node.jsの
 Node.jsがインストールされたWindows PC, Macまたは Raspberry Pi  
 
 ## Installation
-zip fileを解凍する
+1. zip fileを解凍する
+2. 解凍したフォルダーに移動し、ターミナルで expressとwsをnpmでインストールする
+
+```
+  npm i express
+  npm i ws   
+```
 
 ## Launch
-1. 解凍したフォルダーに移動し、ターミナルで "node index.js" を実行する   
+1. 解凍したフォルダーに移動し、ターミナルで以下のコマンドを実行する   
+
+```
+  node index.js
+```
+
 2. Web Browserを起動し、localhost:3010 をアクセスする  
 
 ## Configuration

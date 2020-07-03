@@ -1,5 +1,5 @@
 // elwebapitool.js for elwebapitool(client side)
-// 2020.07.02
+// 2020.07.03
 
 const serverURL = "/elwebapitool/";
 // let tid = 0;
@@ -25,6 +25,7 @@ let vm = new Vue({
     serviceSelected: "",
     idList: [], // array of deviceId
     idSelected: "",
+    deviceType: "",
     resourceTypeList: [],
     resourceTypeSelected: "",
     resourceNameList: [], // array of resource name
@@ -186,7 +187,7 @@ ws.onmessage = function(event){
     deviceId = pathElements[pathElements.length - 1];
     // console.log("deviceId:", deviceId);
     deviceDescriptions[deviceId] = obj.response;
-    console.log("deviceDescriptions:", deviceDescriptions);
+    // console.log("deviceDescriptions:", deviceDescriptions);
 
     // resourceTypeListの処理
     resourceTypeList = [""];
@@ -205,6 +206,9 @@ ws.onmessage = function(event){
     // 入力フィールドResouce TypeとResource Nameの表示項目の更新
     resourceTypeIsUpdated("/"+deviceId, "/properties");
     vm.resourceTypeSelected = (resourceTypeList[1]) ? resourceTypeList[1] : "";
+
+    // 入力フィールドidの下のdeviceTypeの更新
+    vm.deviceType = obj.response.deviceType;
   }
   
   // LOGに追加
@@ -376,6 +380,7 @@ function idIsUpdated(idSelected) {
   if (idSelected == "") {
     vm.resourceTypeList = [""];
     vm.resourceNameList = [""];
+    vm.deviceType ="";
   } else {
     vm.resourceTypeList = [""];
     vm.resourceNameList = [""];
@@ -386,6 +391,7 @@ function idIsUpdated(idSelected) {
     const deviceDescription = deviceDescriptions[deviceId];
 
     if (deviceDescription !== undefined){
+      vm.deviceType = deviceDescription.deviceType;
       // Update resourceTypeList
       let resourceTypeList = [""];
       if (deviceDescription.properties !== undefined) {
@@ -402,6 +408,8 @@ function idIsUpdated(idSelected) {
       vm.resourceTypeSelected = (resourceTypeList[1]) ? resourceTypeList[1] : "";
       resourceTypeIsUpdated(idSelected, vm.resourceTypeSelected);
       vm.resourceNameSelected = (vm.resourceNameList[1]) ? vm.resourceNameList[1] : "";
+    } else {
+      vm.deviceType ="";
     }
   }
 }
