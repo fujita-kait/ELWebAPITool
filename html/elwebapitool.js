@@ -370,6 +370,10 @@ function serviceIsUpdated(serviceSelected) {
     vm.idList = [""];
     vm.resourceTypeList = [""];
     vm.resourceNameList = [""];
+    vm.idSelected = "";
+    vm.resourceTypeSelected = "";
+    vm.resourceNameSelected = "";
+    vm.deviceType = "";
   }
 }
 
