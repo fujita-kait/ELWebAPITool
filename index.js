@@ -1,35 +1,32 @@
 #!/usr/bin/env node
 
 // index.js for ELWebAPITool
-// 2020.07.03
+// 2020.07.09
 // access http://localhost:3010/elwebapitool
+// Created by Hiroyuki Fujita
+'use strict';
 
-const version = "2019.07.02";
+const VERSION = "2019.07.09";
 const portNumber = 3010;
 
 let express = require('express');
 let app = express();
 let server = require('http').Server(app);
-const os = require('os');
 const fs = require('fs');
 const https = require('https');
 const WebSocket = require("ws").Server;
 const wss = new WebSocket({ server });
-
 const port = process.env.PORT || portNumber;
-const elwebapiServer = 'https://webapiechonet.com';
-
 let config ={}; // config.json data
 
-// 設定データの読み込み
-// read config.json
+// 設定データ(config.json)の読み込み
 fs.readFile('config.json', 'utf8', (err, data) => {
   if (err) throw err;
   config = JSON.parse(data);
-  console.log("config.json:", config);
+  console.log("\nconfig.json:", config);
 });
 
-// create a folder "log" to save log files
+// create a folder "log" to save log files, if it doesn't exist
 fs.readdir('.', function(err, files){
     if (err) throw err;
     if (files.includes('log') == false) {
@@ -41,7 +38,9 @@ fs.readdir('.', function(err, files){
 
 // web serverの起動
 server.listen(port, function(){
-  console.log("*** elwebapitool " + version + ", http://localhost:" + port + " ***");
+  console.log("\n******************************************************");
+  console.log("*** elwebapitool " + VERSION + ", http://localhost:" + port + " ***");
+  console.log("******************************************************\n");
 });
 
 // location of static files
@@ -50,57 +49,58 @@ app.use(express.static(__dirname + '/html'))
 // middleware for express
 app.use(express.json());
 
-// routing for express
+// *** routing for express ***
 // GET /  
 app.get('/', function(req, res){
-  console.log("REST: GET /index.html");
+  console.log("\nREST: GET /");
   res.sendFile(__dirname + '/html/index.html');
 });
 
 // GET /index
 app.get('/index', function(req, res){
-  console.log("REST: GET /index.html");
+  console.log("\nREST: GET /index.html");
   res.sendFile(__dirname + '/html/index.html');
 });
 
 // GET /elwebapitool/config
 // request config.json data
 app.get('/elwebapitool/config', function(req, res){
-  console.log("REST: GET /elwebapitool/config");
+  console.log("\nREST: GET /elwebapitool/config");
   res.send(config);
 });
 
 // PUT /elwebapitool/config
 // request config.json data update
 app.put('/elwebapitool/config', function(req, res){
-  console.log("REST: PUT /elwebapitool/config");
+  console.log("\nREST: PUT /elwebapitool/config");
   updateConfig(req.body.config);
   res.send("Got a PUT request at /elwebapitool/config");
 });
 
 // EL web api serverへのREST送信のリクエスト
 app.put('/elwebapitool/send', function(req, res){
-  console.log("REST: PUT /elwebapitool/send");
+  console.log("\nREST: PUT /elwebapitool/send");
   sendRequest(req.body.hostname, req.body.path, req.body.method, req.body.headers, req.body.body);
   res.send("Got a PUT request at /elwebapitool/send");
 });
 
 // Log保存リクエスト
 app.post('/elwebapitool/saveLog', function(req, res){
-  console.log("REST: POST /elwebapitool/saveLog");
+  console.log("\nREST: POST /elwebapitool/saveLog");
   saveLog(req.body.log);
   res.send("Got a POST request at /elwebapitool/saveLog");
 });
+// *** END of <routing for express> ***
 
 // websocket: A process when WebSocket server gets a connection from a client
 wss.on("connection", ws => {
-    console.log("WebSocket: connection");
-    ws.on("message", message => {
-        console.log("Received: " + message);
-        if (message === "hello") {
-            ws.send("hello from server");
-        }
-    });
+  console.log("WebSocket: connection");
+  ws.on("message", message => {
+    console.log("Received: " + message);
+    if (message === "hello") {
+        ws.send("hello from server");
+    }
+  });
 });
 
 // config.jsonのupdate
@@ -113,9 +113,13 @@ function updateConfig(newConfig){ // newConfig:config.json用のデータ
   });
 }
 
-// EL web api serverへのREST送信
-function sendRequest(hostname, path, method, headers, body) {   // string:uri, string:body
-  console.log("sendRequest::　hostname:",hostname, ", path:", path, ", method:", method, ", headers:", headers, ", body:", body);
+// ECHONET Lite webApi serverへのREST送信
+function sendRequest(hostname, path, method, headers, body) {
+  console.log("", method, hostname, path);
+  console.log(" headers:", headers);
+  if (body != ""){
+    console.log(" body:", body);
+  }
 
   const options = {
     hostname: hostname, //'webapiechonet.com'
@@ -125,24 +129,20 @@ function sendRequest(hostname, path, method, headers, body) {   // string:uri, s
   };
   
   const req = https.request(options, (res) => {
-    console.log('statusCode:', res.statusCode);
-    // console.log('headers:', res.headers);
+    console.log(' response statusCode:', res.statusCode);
     let resStr = '';
     res.on('data', (d) => {
-      // dはbuffer dataなので、string(JSON)に変換
-      let str = d.toString('utf8');
-      // console.log("response:",str);
-      resStr += str;
+      let str = d.toString('utf8'); // response(d)はbuffer dataなので、string(JSON)に変換
+      resStr += str;  // 複数回のresponseに対応
     });
     res.on('end', () => {
-      console.log("response:",resStr);
-      // JSONをobjectに変換
-      let data = JSON.parse(resStr);
+      console.log(" response:",resStr);
+      let data = JSON.parse(resStr);        // JSONをobjectに変換
       // websocket: push to client(web browser)
       wss.clients.forEach((client) => {
         client.send(JSON.stringify({"hostname":hostname, "path":path, "method":method, "statusCode":res.statusCode, "response":data}), (error) => {
           if(error) {
-              console.log('Failed to send a message on the WebSocket channel.', error);
+            console.log('Failed to send a message on the WebSocket channel.', error);
           }
         });
       });
@@ -153,7 +153,7 @@ function sendRequest(hostname, path, method, headers, body) {   // string:uri, s
     console.error(e);
   });
 
-  // Write data to request body
+  // Write data to request-body for PUT or POST
   if ((body !== "") && (body !== undefined)){
     req.write(body);
   }
@@ -173,11 +173,11 @@ function saveLog(data) {  // string:data
   hour = (hour.length == 1) ? ("0" + hour) : hour;
   minute = (minute.length == 1) ? ("0" + minute) : minute;
   second = (second.length == 1) ? ("0" + second) : second;
-  filename = "elwebapitoolLog_" + year + month + day + hour + minute + second  + ".txt";
+  const filename = "log_" + year + month + day + hour + minute + second  + ".txt";
   
-  const buffer = new Buffer(data);
+  const buffer = Buffer.from(data);
   fs.writeFile("log/"+filename, buffer, (err) => {
     if (err) console.log("Error: Can not save a log file.");
-    console.log('The file has been saved!');
+    console.log('\nA log file is saved!');
   });
 }

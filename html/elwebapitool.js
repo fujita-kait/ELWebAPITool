@@ -1,13 +1,12 @@
 // elwebapitool.js for elwebapitool(client side)
-// 2020.07.03
+// 2020.07.09
+// Created by Hiroyuki Fujita
+'use strict';
 
 const serverURL = "/elwebapitool/";
-// let tid = 0;
 let packetId = 0;
-let active_packet_id = '';
 let dataLogArray = [];
 let deviceDescriptions = {};
-// let analyzedData = "";
 
 let vm = new Vue({
   el: '#app',
@@ -37,15 +36,9 @@ let vm = new Vue({
     response: "response",
     rbOrder: "normalOrder",
 
-    // rbInputData: "el",
     packet_list: [],
-    packetDetail: "",
     
     // CSS
-    // schemeStyle: {color: 'black'},
-    // elApiServerStyle: {color: 'black'},
-    // apiKeyStyle: {color: 'black'},
-    // prefixStyle: {color: 'black'},
     methodStyle: {color: 'black'},
     serviceStyle: {color: 'black'},
     idStyle: {color: 'black'},
@@ -56,15 +49,15 @@ let vm = new Vue({
 
   },
   methods: {
-    // configurationのアイコンをクリックしたときの動作
-    // configuration: function () {
-    //   window.open('configuration.html', 'configuration', 'width=800,height=400');
+    // settingのアイコンをクリックしたときの処理
+    // setting: function () {
     // },
 
-    // SENDボタンがクリックされたときのメソッド
+    // SENDボタンがクリックされたときの処理
     buttonClickSend: function () {
       buttonClickSend(this.scheme, this.elApiServer, this.apiKey, this.methodSelected, this.prefix,
-        this.serviceSelected, this.idSelected, this.resourceTypeSelected, this.resourceNameSelected, this.query, this.body);
+        this.serviceSelected, this.idSelected, this.resourceTypeSelected, this.resourceNameSelected,
+        this.query, this.body);
     },
     methodIsUpdated: function () {
       methodIsUpdated(this.methodSelected, this.serviceSelected, this.idSelected, this.resourceTypeSelected);
@@ -81,36 +74,30 @@ let vm = new Vue({
     resourceNameIsUpdated: function () {
       resourceNameIsUpdated(this.resourceNameSelected);
     },
-    
-    // updateResourceName: function () {
-    //   updateResourceName(this.idSelected);
-    // },
     updateRbOrder: function () {
-        displayLog();
+      displayLog();
     },
+    // CLEARボタンがクリックされたときの処理
     clearLog: function () {
-        clearLog();
+      clearLog();
     },
+    // SAVEボタンがクリックされたときの処理
     saveLog: function () {
-        saveLog();
-    },
-		// パケット一覧からパケット行がクリックされたときの処理 (パケット詳細を表示)
-		showPacketDetail: this.packetMonitorShowPacketDetail.bind(this),
-		// パケット一覧で矢印キーが押されたときの処理
-		upDownList: this.packetMonitorUpDownList.bind(this)
+      saveLog();
     }
+  }
 });
 
 // connect websocket
 console.log('ws://' + document.location.host);
 let ws = new WebSocket('ws://' + document.location.host);
 ws.onopen = function(event){
-    console.log(" connected");    
+  console.log("WebSocket: connected");    
 };
 
 // server側のconfig.jsonのデータをリクエストする。その値をvmに設定する。
 // XHR 非同期処理
-function reqListener () {
+function reqListener() {
   console.log("config.json!:", this.responseText);
   const config = JSON.parse(this.responseText);
   // window.localStorage.setItem('config', this.responseText);
@@ -119,17 +106,17 @@ function reqListener () {
   vm.apiKey = config.apiKey;
   vm.prefix = config.prefix;
 }
-var oReq = new XMLHttpRequest();
+let oReq = new XMLHttpRequest();
 oReq.addEventListener("load", reqListener);
 oReq.open('GET', serverURL + 'config');
 oReq.send();
 
 // websocket:受信処理
+// index.js内のwebserverがECHONET Lite WebApi serverにRESTでアクセスし、
+// そのレスポンスをブラウザーにwebsocketでPUSH通信する。
 ws.onmessage = function(event){
-  // console.log("server_to_client", event.data);
-  console.log("Web socketの受信:");
   const obj = JSON.parse(event.data);
-
+  console.log("Web socketの受信:");
   console.log(" hostname:", obj.hostname);
   console.log(" path:", obj.path);
   console.log(" method:", obj.method);
@@ -138,15 +125,15 @@ ws.onmessage = function(event){
   vm.statusCode = "status code: " + obj.statusCode;
   vm.response = obj.response;
 
-  // ECHONET Lite Web Api Serverからのresponse処理
-  let regex;
+  // ECHONET Lite WebApi Serverからのresponse処理
+  let regex; // obj.path でどのREQUESTのRESPONSEであるかを分岐する
 
   // GET /elapi/v1
-  // vm.serviceListにserviceをpushする 
+  // serviceListを新規に作成する 
   regex = /\/v1$/;   // 正規表現：行末が'/v1'
   if (regex.test(obj.path)) {
-    deviceDescriptions = {};
-    serviceList = [""];
+    deviceDescriptions = {};  // service listを新規で取得したので、deviceDescriptionsを初期化する
+    let serviceList = [""];
     if (obj.response.version !== undefined) {
       for (let service of obj.response.version) {
         serviceList.push("/" + service.name);
@@ -163,14 +150,13 @@ ws.onmessage = function(event){
   regex = /\/devices$/;   // 正規表現：行末が'/devices'
   if (regex.test(obj.path)) {
     deviceDescriptions = {};
-    idList = [""];
+    let idList = [""];
     if (obj.response.devices !== undefined) {
       for (let device of obj.response.devices) {
         idList.push("/" + device.id);
       }
     }
     console.log("idListの更新:", idList);
-    // idList.sort();
     vm.idList = idList.sort();
     // 入力フィールドidの表示項目の更新
     vm.idSelected = (idList[1]) ? idList[1] : "";
@@ -184,13 +170,13 @@ ws.onmessage = function(event){
   if (regex.test(obj.path)) {
     // device idの取り出し
     const pathElements = obj.path.split('/');  // 最後の要素が device id
-    deviceId = pathElements[pathElements.length - 1];
+    let deviceId = pathElements[pathElements.length - 1];
     // console.log("deviceId:", deviceId);
     deviceDescriptions[deviceId] = obj.response;
     // console.log("deviceDescriptions:", deviceDescriptions);
 
     // resourceTypeListの処理
-    resourceTypeList = [""];
+    let resourceTypeList = [""];
     if (obj.response.properties !== undefined) {
       resourceTypeList.push("/properties");
     }
@@ -211,13 +197,13 @@ ws.onmessage = function(event){
     vm.deviceType = obj.response.deviceType;
   }
   
-  // LOGに追加
+  // RESPONSEをLOGに追加
   const packet_id = 'packet-' + packetId++;
   const pkt = {
-      id:packet_id,
-      timeStamp:timeStamp(),
-      direction:"RES",
-      data:obj
+    id:packet_id,
+    timeStamp:timeStamp(),
+    direction:"RES",
+    data:obj
   }
   dataLogArray.push(pkt);
   displayLog();
@@ -228,7 +214,7 @@ function displayLog() {
   let log = [];
   for (let dataLog of dataLogArray) {
     let pkt={};
-    if (dataLog.direction == 'REQ') {
+    if (dataLog.direction == 'REQ') { // REQUEST
       pkt = 
         {
           id: dataLog.id,
@@ -236,12 +222,13 @@ function displayLog() {
           direction: dataLog.direction,
           hex: dataLog.data.method + " https://"+dataLog.data.hostname+dataLog.data.path
         };
-    } else {
+    } else { // RESPONSE
       pkt = 
         {
           id: dataLog.id,
           timeStamp: dataLog.timeStamp,
           direction: dataLog.direction,
+          statusCode: dataLog.data.statusCode,
           hex: dataLog.data.response
         };
     }
@@ -253,75 +240,37 @@ function displayLog() {
   vm.packet_list = log;
 
   // clear packet selection
-	if (this.active_packet_id) {
-		$('#' + this.active_packet_id).removeClass('active');
-		this.active_packet_id = '';
-	}
-  vm.packetDetail = "";
+	// if (this.active_packet_id) {
+	// 	$('#' + this.active_packet_id).removeClass('active');
+	// 	this.active_packet_id = '';
+	// }
 }
 
+// ログ用に現在の時刻を取得する
 function timeStamp() {
-    const date = new Date();
-    let hour = date.getHours().toString();
-    let minute = date.getMinutes().toString();
-    let second = date.getSeconds().toString();
-    hour = (hour.length == 1) ? ("0" + hour) : hour;
-    minute = (minute.length == 1) ? ("0" + minute) : minute;
-    second = (second.length == 1) ? ("0" + second) : second;
-    return hour + ":" + minute + ":" + second;
+  const date = new Date();
+  let hour = date.getHours().toString();
+  let minute = date.getMinutes().toString();
+  let second = date.getSeconds().toString();
+  hour = (hour.length == 1) ? ("0" + hour) : hour;
+  minute = (minute.length == 1) ? ("0" + minute) : minute;
+  second = (second.length == 1) ? ("0" + second) : second;
+  return hour + ":" + minute + ":" + second;
 }
 
-// function analyzeData(uint8Array) {  // uint8Array: [UInt8]
-//     let analyzedData = "";
-//     let epcArray = [];
-//     const esv = uint8Array[10];
-//     const epc = uint8Array[12];
-//     const edt = uint8Array.slice(14);
-
-//     // Decode PropertyMap
-//     if (shouldDecodePropertyMap()) {
-//       if (edt.length < 17) {  // PropertyMapがEPCの列挙の場合
-//         for (let i=1; i<edt.length; i++) {
-//           epcArray.push(toStringHex(edt[i], 1));
-//         }
-//       } else {    // PropertyMapがbitmapの場合
-//         for (let i = 1; i<17; i++) {
-//           for (let j = 0; j<8; j++) {
-//             if ((edt[i] & (1 << j)) !==0 ) {
-//               let epc = 0x80 + (0x10 * j) + i-1;
-//                 epcArray.push(toStringHex(epc, 1));
-//             }             
-//           }
-//         }
-//       }
-//       epcArray.sort();
-//       analyzedData = "EPC:";
-//       for (let data of epcArray) {
-//         analyzedData += " " + data;
-//       }
-//     } else {
-//         return null;
-//     }
-//     return analyzedData;  // analyzedData: string
-//     function shouldDecodePropertyMap() {
-//       return ((esv == 0x72)&&((epc == 0x9D)||(epc == 0x9E)||(epc == 0x9F)));
-//     }
-// }
-
-
-
+// 入力フィールド method の値が変更された場合の処理
 function methodIsUpdated(methodSelected, serviceSelected, idSelected, resourceTypeSelected){
   switch (methodSelected) {
     case "GET":
       console.log("GET");
       // serviceとdevice idがblankでなく、device descriptionが存在する場合
       if ((serviceSelected !== "") && (idSelected !== "")){
-        const deviceId = idSelected.slice(1); // remove "/"
+        const deviceId = idSelected.slice(1); // remove "/" from idSelected
         const deviceDescription = deviceDescriptions[deviceId];
 
         if (deviceDescription !== undefined) {
           // resourceNameList作成
-          resourceNameList = [""];
+          let resourceNameList = [""];
           if (deviceDescription.properties !== undefined) {
             for (let propertyName of Object.keys(deviceDescription.properties)) {
               resourceNameList.push("/" + propertyName);
@@ -336,12 +285,12 @@ function methodIsUpdated(methodSelected, serviceSelected, idSelected, resourceTy
       console.log("PUT");
       // serviceとdevice idがblankでなく、device descriptionが存在する場合
       if ((serviceSelected !== "") && (idSelected !== "")){
-        const deviceId = idSelected.slice(1); // remove "/"
+        const deviceId = idSelected.slice(1); // remove "/" from idSelected
         const deviceDescription = deviceDescriptions[deviceId];
 
         if (deviceDescription !== undefined) {
           // writableがtrueのものでresourceNameList作成
-          resourceNameList = [""];
+          let resourceNameList = [""];
           if (deviceDescription.properties !== undefined) {
             for (let propertyName of Object.keys(deviceDescription.properties)) {
               // writable : trueなら
@@ -364,6 +313,7 @@ function methodIsUpdated(methodSelected, serviceSelected, idSelected, resourceTy
   }
 }
 
+// 入力フィールド service の値が変更された場合の処理
 function serviceIsUpdated(serviceSelected) {
   console.log("serviceIsUpdated", serviceSelected);
   if (serviceSelected == "") {
@@ -377,7 +327,7 @@ function serviceIsUpdated(serviceSelected) {
   }
 }
 
-// 入力フィールドidの値が変更された場合の処理
+// 入力フィールド id の値が変更された場合の処理
 // 選択されたidのdevice descriptionが存在する場合は、resourceTypeとresourceNameを更新する
 function idIsUpdated(idSelected) {
   console.log("idが更新されました。", idSelected);
@@ -418,6 +368,7 @@ function idIsUpdated(idSelected) {
   }
 }
 
+// 入力フィールド resourceType の値が変更された場合の処理
 function resourceTypeIsUpdated(idSelected, resourceTypeSelected) {
   console.log("resourceTypeIsUpdated",resourceTypeSelected);
   if (resourceTypeSelected == "") {
@@ -462,18 +413,20 @@ function resourceTypeIsUpdated(idSelected, resourceTypeSelected) {
   vm.resourceNameSelected = (resourceNameList[1]) ? resourceNameList[1] : "";
 }
 
+// 入力フィールド resourceName の値が変更された場合の処理
 function resourceNameIsUpdated(resourceNameSelected) {
   console.log("resourceNameIsUpdated",resourceNameSelected);
   // update "display schema"
 }
 
-// GUIのSENDボタンをクリックした場合のファンクション：入力データをREST PUT /elwebapitool/send
+// GUIのSENDボタンをクリックした場合の処理
+// 入力データをREST PUT /elwebapitool/send
 function buttonClickSend(scheme, elApiServer, apiKey, methodSelected, prefix, 
   serviceSelected, idSelected, resourceTypeSelected, resourceNameSelected, query, body) {
   console.log("SENDボタンがクリックされました。");
-  console.log(" scheme:", scheme,", elApiServer:", elApiServer, ", apiKey:", apiKey);
-  console.log(" methodSelected:", methodSelected, ", prefix:", prefix, ", serviceSelected:", serviceSelected, ", idSelected:", idSelected, ", resourceTypeSelected:", resourceTypeSelected);
-  console.log(" resourceName:", resourceNameSelected, ", query:", query, ", body:", body);
+  // console.log(" scheme:", scheme,", elApiServer:", elApiServer, ", apiKey:", apiKey);
+  // console.log(" methodSelected:", methodSelected, ", prefix:", prefix, ", serviceSelected:", serviceSelected, ", idSelected:", idSelected, ", resourceTypeSelected:", resourceTypeSelected);
+  // console.log(" resourceName:", resourceNameSelected, ", query:", query, ", body:", body);
   
   let path = prefix;
   if (serviceSelected !== "") {
@@ -491,30 +444,24 @@ function buttonClickSend(scheme, elApiServer, apiKey, methodSelected, prefix,
       }
     }
   }
-  console.log(" path:",path);
+  // console.log(" path:",path);
 
-  let message = {};
+  let message = {
+    hostname: elApiServer,
+    method:   methodSelected, 
+    path:     path
+  };
   if(methodSelected == "GET"){
-     message = {
-      hostname: elApiServer,
-      method: methodSelected, 
-      path: path,
-      headers: { "X-Elapi-key": apiKey }, 
-      body: ""
-    };  
+     message.headers = { "X-Elapi-key": apiKey };
+     message.body    = "";
   }
   if((methodSelected == "PUT")||(methodSelected == "POST")){
-     message = {
-      hostname: elApiServer,
-      method: methodSelected, 
-      path: path,
-      headers: {
-        "X-Elapi-key": apiKey,
-        "Content-Type": "application/json",
-        "Content-Length": body.length
-      }, 
-      body: body
-    };  
+    message.headers = {
+      "X-Elapi-key":    apiKey,
+      "Content-Type":   "application/json",
+      "Content-Length": body.length
+    };
+    message.body = body;
   }
 
   console.log(" message: ", message);
@@ -524,88 +471,46 @@ function buttonClickSend(scheme, elApiServer, apiKey, methodSelected, prefix,
   request.send(JSON.stringify(message));
   vm.request = message.method + " " + vm.scheme + "://" +message.hostname + message.path;
 
-  // LOGに追加
+  // REQUESTをLOGに追加
   const packet_id = 'packet-' + packetId++;
   const pkt = {
-      id:packet_id,
-      timeStamp:timeStamp(),
-      direction:"REQ",
-      data:message
+    id:packet_id,
+    timeStamp:timeStamp(),
+    direction:"REQ",
+    data:message
   }
   console.log(" pkt:", pkt);
   dataLogArray.push(pkt);
   displayLog();
 }
 
+// ログの保存機能
 function saveLog() {
-    let log = "";
-    for (let dataLog of dataLogArray) {
-      console.log("dataLog:", dataLog);
-      log = log + dataLog.timeStamp + "," + dataLog.direction + "," + 
-        dataLog.data.method + "," + vm.scheme + "://" + dataLog.data.hostname + dataLog.data.path + "\n";
+  // ログの作成
+  let log = "";
+  for (let dataLog of dataLogArray) {
+    if (dataLog.direction == "REQ") { // REQUESTの場合
+      log += dataLog.timeStamp + ",REQ," + dataLog.data.method + "," + vm.scheme + "://" + dataLog.data.hostname + dataLog.data.path;
+      if (dataLog.data.body == ""){
+        log +=  "\n";
+      } else {
+        log +=  ",body:" + dataLog.data.body + "\n";
+      }
+    } else {　// RESPONSEの場合
+      log = log + dataLog.timeStamp + ",RES," + dataLog.data.statusCode + "," + JSON.stringify(dataLog.data.response) + "\n";
     }
-    const message = {log:log};
-    const request = new XMLHttpRequest();
-    request.open('POST', serverURL + 'saveLog');
-    request.setRequestHeader("Content-type", "application/json");
-    request.send(JSON.stringify(message));
+  }
+  // ログ保存をサーバーに依頼
+  const message = {log:log};
+  const request = new XMLHttpRequest();
+  request.open('POST', serverURL + 'saveLog');
+  request.setRequestHeader("Content-type", "application/json");
+  request.send(JSON.stringify(message));
 }
 
+// ログ画面のクリア機能
 function clearLog() {
-    packetId = 0;
-    dataLogArray.length = 0;
-    vm.packet_list = [];
-	vm.packetDetail = "";
-}
-
-function packetMonitorShowPacketDetail(event){
-	if (this.active_packet_id) {
-		$('#' + this.active_packet_id).removeClass('active');
-		this.active_packet_id = '';
-	}
-	let t = event.target;
-	console.log("t.id: ",t.id);
-    $('#' + t.id).addClass('active');
-	this.active_packet_id = t.id;
-
-	// 現在選択中のパケット ID
-	let id_parts = this.active_packet_id.split('-');
-	let pno = parseInt(id_parts[1], 10);
-	
-    // packetの解析結果の表示
-	// vm.packetDetail = analyzeData(dataLogArray[pno].data);
-}
-
-function packetMonitorUpDownList(event){
-	event.preventDefault();
-	event.stopPropagation();
-	// 選択中のパケット行がなければ終了
-	if (!this.active_packet_id) {
-		return;
-	}
-	// 現在選択中のパケット ID
-	let id_parts = this.active_packet_id.split('-');
-	let pno = parseInt(id_parts[1], 10);
-
-	let c = event.keyCode;
-	let k = event.key;
-	if (c === 38 || k === 'ArrowUp') {
-		// 上矢印キー
-		if (vm.rbOrder == "normalOrder") {
-    		if (pno-- <0 ) {pno = 0}
-		} else {
-    		if (pno++ >= dataLogArray.length ) {pno = dataLogArray.length -1}		
-		}
-	} else if (c === 40 || k === 'ArrowDown') {
-		// 下矢印キー
-		if (vm.rbOrder == "normalOrder") {
-    		if (pno++ >= dataLogArray.length ) {pno = dataLogArray.length -1}
-		} else {
-    		if (pno-- <0 ) {pno = 0}
-		}
-	} else {
-		return;
-	}
-	// 遷移したパケット行にフォーカスする
-	$('#packet-' + pno).focus();
+  packetId = 0;
+  dataLogArray.length = 0;
+  vm.packet_list = [];
 }
