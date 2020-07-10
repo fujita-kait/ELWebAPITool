@@ -20,14 +20,14 @@ let vm = new Vue({
     // input or control on GUI
     methodList: ["GET", "PUT", "POST", "DELETE"],
     methodSelected: "GET",
-    serviceList: [],
+    serviceList: [], // [/devices, /groups]
     serviceSelected: "",
-    idList: [], // array of deviceId
+    idList: [], // [/<deviceId1>, /<deviceId2>,...]
     idSelected: "",
     deviceType: "",
-    resourceTypeList: [],
+    resourceTypeList: [], // [/properties, /actons]
     resourceTypeSelected: "",
-    resourceNameList: [], // array of resource name
+    resourceNameList: [], // [/airFlowLevel, /roomTemperature,...]
     resourceNameSelected:"",
     query: "",
     body: "",
@@ -36,7 +36,7 @@ let vm = new Vue({
     response: "response",
     rbOrder: "normalOrder",
 
-    packet_list: [],
+    message_list: [],
     
     // CSS
     methodStyle: {color: 'black'},
@@ -146,10 +146,10 @@ ws.onmessage = function(event){
   }
 
   // GET /elapi/v1/devices
-  // vm.idListにdevice idをpushする 
+  // idListを新規に作成する 
   regex = /\/devices$/;   // 正規表現：行末が'/devices'
   if (regex.test(obj.path)) {
-    deviceDescriptions = {};
+    deviceDescriptions = {};  // id listを新規で取得したので、deviceDescriptionsを初期化する
     let idList = [""];
     if (obj.response.devices !== undefined) {
       for (let device of obj.response.devices) {
@@ -168,14 +168,12 @@ ws.onmessage = function(event){
   // vm.resourceNameListにresource nameをpushする
   regex = /\/devices\/([0-9]|[a-z]|[A-Z])+$/; // 正規表現'/devices/'の後、行末まで英数字
   if (regex.test(obj.path)) {
-    // device idの取り出し
-    const pathElements = obj.path.split('/');  // 最後の要素が device id
-    let deviceId = pathElements[pathElements.length - 1];
-    // console.log("deviceId:", deviceId);
+    // deviceDescriptionsにdeviceIdをkey, device descriptionをvalueとして追加
+    const pathElements = obj.path.split('/');  // pathを'/'で分割して要素を配列にする
+    const deviceId = pathElements[pathElements.length - 1];  // 配列の最後の要素が deviceId
     deviceDescriptions[deviceId] = obj.response;
-    // console.log("deviceDescriptions:", deviceDescriptions);
 
-    // resourceTypeListの処理
+    // resourceTypeListを新規に作成する
     let resourceTypeList = [""];
     if (obj.response.properties !== undefined) {
       resourceTypeList.push("/properties");
@@ -206,44 +204,31 @@ ws.onmessage = function(event){
     data:obj
   }
   dataLogArray.push(pkt);
+  
+  // LOG表示の更新
   displayLog();
-
 };
 
 function displayLog() {
   let log = [];
   for (let dataLog of dataLogArray) {
-    let pkt={};
+    let message = {
+      id: dataLog.id,
+      timeStamp: dataLog.timeStamp,
+      direction: dataLog.direction,
+    };
     if (dataLog.direction == 'REQ') { // REQUEST
-      pkt = 
-        {
-          id: dataLog.id,
-          timeStamp: dataLog.timeStamp,
-          direction: dataLog.direction,
-          hex: dataLog.data.method + " https://"+dataLog.data.hostname+dataLog.data.path
-        };
+      message.body = dataLog.data.method + " https://"+dataLog.data.hostname+dataLog.data.path;
     } else { // RESPONSE
-      pkt = 
-        {
-          id: dataLog.id,
-          timeStamp: dataLog.timeStamp,
-          direction: dataLog.direction,
-          statusCode: dataLog.data.statusCode,
-          hex: dataLog.data.response
-        };
+      message.statusCode = dataLog.data.statusCode;
+      message.body = dataLog.data.response;
     }
-    log.push(pkt);
+    log.push(message);
   }
   if (vm.rbOrder == "reverseOrder") {
     log.reverse();
   }
-  vm.packet_list = log;
-
-  // clear packet selection
-	// if (this.active_packet_id) {
-	// 	$('#' + this.active_packet_id).removeClass('active');
-	// 	this.active_packet_id = '';
-	// }
+  vm.message_list = log;
 }
 
 // ログ用に現在の時刻を取得する
@@ -262,7 +247,7 @@ function timeStamp() {
 function methodIsUpdated(methodSelected, serviceSelected, idSelected, resourceTypeSelected){
   switch (methodSelected) {
     case "GET":
-      console.log("GET");
+      console.log("GETが選択されました");
       // serviceとdevice idがblankでなく、device descriptionが存在する場合
       if ((serviceSelected !== "") && (idSelected !== "")){
         const deviceId = idSelected.slice(1); // remove "/" from idSelected
@@ -282,7 +267,7 @@ function methodIsUpdated(methodSelected, serviceSelected, idSelected, resourceTy
       }
       break;
     case "PUT":
-      console.log("PUT");
+      console.log("PUTが選択されました");
       // serviceとdevice idがblankでなく、device descriptionが存在する場合
       if ((serviceSelected !== "") && (idSelected !== "")){
         const deviceId = idSelected.slice(1); // remove "/" from idSelected
@@ -304,7 +289,7 @@ function methodIsUpdated(methodSelected, serviceSelected, idSelected, resourceTy
         }
       }
       break;
-    case "POST":
+    case "POSTが選択されました":
       console.log("POST");
       break;
     case "DELETE":
@@ -512,5 +497,5 @@ function saveLog() {
 function clearLog() {
   packetId = 0;
   dataLogArray.length = 0;
-  vm.packet_list = [];
+  vm.message_list = [];
 }

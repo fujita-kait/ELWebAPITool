@@ -37,27 +37,27 @@
       font-size: 90%;
       padding: 0.2em 1em;
     }
-    #packet-monitor-body {
+    #message-monitor-body {
       margin: 0;
       padding: 0;
     }
-    #packet-list-wrapper {
+    #message-list-wrapper {
       height: 30em;
       overflow-y: scroll;
     }
-    #packet-list li {
+    #message-list li {
       font-family: Consolas, 'Courier New', Courier, Monaco, monospace;
       font-size: 90%;
       padding: 0.2em 1em;
       cursor: pointer;
     }
-    #packet-list li span {
+    #message-list li span {
       display: inline-block;
     }
-    #packet-list li span.col1 {
+    #message-list li span.col1 {
       width: 5em;
     }
-    #packet-list li span.col2 {
+    #message-list li span.col2 {
       width: 3em;
     }
   </style>
@@ -209,20 +209,20 @@
     </div>
 
     <!-- LOG body -->
-    <div class="card-body" id="packet-monitor-body">
-      <div id="packet-list-wrapper">
-        <ul class="list-group" id="packet-list" v-on:keyup.stop v-on:keydown.stop>
-          <li class="list-group-item d-flex align-items-start" id="packet-monitor-header" tabindex="0">
+    <div class="card-body" id="message-monitor-body">
+      <div id="message-list-wrapper">
+        <ul class="list-group" id="message-list" v-on:keyup.stop v-on:keydown.stop>
+          <li class="list-group-item d-flex align-items-start" id="message-monitor-header" tabindex="0">
             <span class="col1">HH MM SS</span>
             <span class="col2">DIR</span>
             <span class="col3">DATA</span>
           </li>
-          <!-- <li v-for="packet in packet_list" class="list-group-item" v-bind:id="packet.id" tabindex="0" v-on:focus="showPacketDetail" v-on:keydown="upDownList" > -->
-          <li v-for="packet in packet_list" class="list-group-item d-flex align-items-start" v-bind:id="packet.id" tabindex="0">
-            <span class="col1">{{ packet.timeStamp }}</span>
-            <span class="col2">{{ packet.direction }}</span>
-            <span v-if="packet.direction === 'REQ'" class="col3">{{ packet.hex }}</span>
-            <span v-else class="col3">status code: {{ packet.statusCode }}<pre>{{ packet.hex }}</pre></span>
+          <!-- <li v-for="message in message_list" class="list-group-item" v-bind:id="message.id" tabindex="0" v-on:focus="showmessageDetail" v-on:keydown="upDownList" > -->
+          <li v-for="message in message_list" class="list-group-item d-flex align-items-start" v-bind:id="message.id" tabindex="0">
+            <span class="col1">{{ message.timeStamp }}</span>
+            <span class="col2">{{ message.direction }}</span>
+            <span v-if="message.direction === 'REQ'" class="col3">{{ message.body }}</span>
+            <span v-else class="col3">status code: {{ message.statusCode }}<pre>{{ message.body }}</pre></span>
           </li>
         </ul>
       </div>
