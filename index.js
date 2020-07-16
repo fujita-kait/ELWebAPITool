@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 
 // index.js for ELWebAPITool
-// 2020.07.09
+// 2020.07.16
 // access http://localhost:3010/elwebapitool
 // Created by Hiroyuki Fujita
 'use strict';
 
-const VERSION = "2019.07.09";
+const VERSION = "2019.07.16";
 const portNumber = 3010;
 
 let express = require('express');
@@ -43,6 +43,7 @@ server.listen(port, function(){
   console.log("******************************************************\n");
 });
 
+// ***** START of <routing for express> *****
 // location of static files
 app.use(express.static(__dirname + '/html'))
 
@@ -90,7 +91,7 @@ app.post('/elwebapitool/saveLog', function(req, res){
   saveLog(req.body.log);
   res.send("Got a POST request at /elwebapitool/saveLog");
 });
-// *** END of <routing for express> ***
+// ***** END of <routing for express> *****
 
 // websocket: A process when WebSocket server gets a connection from a client
 wss.on("connection", ws => {

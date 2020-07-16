@@ -1,5 +1,5 @@
 <!-- index.html for elwebapitool-->
-<!-- 2020.07.06 -->
+<!-- 2020.07.16 -->
 
 <!doctype html>
 <html lang="ja">
@@ -9,10 +9,19 @@
   <link rel="stylesheet" href="/lib/bootstrap/css/bootstrap.min.css">
   <link rel="stylesheet" href="/lib/fontawesome-free/css/all.css">
 
-  <title>ECHONET Lite Web Api Tool</title>
+  <title>ECHONET Lite WebApi Tool</title>
   <style>
-    body {
-      padding-top: 1rem;
+    html {
+      position: relative;
+      min-height: 100%;
+    }
+    main.container {
+      padding: 70px 0 0;
+    }
+    .navbar h1 {
+      font-size: 100%;
+      margin-top: 0;
+      margin-bottom: 0;
     }
     .card-deck {
       margin-bottom: 20px;
@@ -64,180 +73,220 @@
 </head>
 
 <body>
-<header>
-</header>
-<main>
-<div class="container" id="app">
+  <div class="container" id="app">
 
-  <!-- input data -->
-  <div class="card mb-3">
-    <!-- input data header -->
-    <div class="card-header py-1">
-      <div class="row">
-        <div class="col-auto h5 mt-2">ECHONET Lite Web API Tool</div>
-        <div class="col"></div>
-        <div class="col-auto mt-2"> {{scheme}}://{{elApiServer}}{{prefix}}</div>
-        <div class="col-auto">
-        </div>
-        <div class="col-auto mt-1 pl-0">
-          <!-- SENDボタン -->
-          <button type="button" class="btn btn-secondary btn-sm" v-on:click="buttonClickSend" >SEND</button>
+    <header>
+      <div class="navbar navbar-expand-md navbar-dark fixed-top bg-dark d-block">
+        <h1 class="d-inline-block">
+          <router-link to="/home">
+            <a class="navbar-brand">
+              <span style="color:#FFFFFF;">ECHONET Lite WebAPI Tool</span>
+            </a>
+          </router-link>
+        </h1>
+
+        <div class="d-inline-block float-right">
+          <!-- ホームボタン -->
+          <router-link to="/home">
+            <a class="btn" title="Back to the home"><i class="fas fa-home" style="color:#FFFFFF;"></i></a>
+          </router-link>
           <!-- 設定ボタン -->
-          <div class="btn" title="Settings"><i class="fas fa-cog"></i></div>
+          <router-link to="/setting">
+            <a class="btn" title="Setting"><i class="fas fa-cog" style="color:#FFFFFF;"></i></a>
+          </router-link>
+          <!-- HELPボタン -->
+          <router-link to="/help">
+            <a class="btn" title="Help"><i class="fas fa-question-circle" style="color:#FFFFFF;"></i></a>
+          </router-link>
         </div>
       </div>
-    </div>
+    </header>
 
-    <!-- input data body -->
-    <div class="card-body pt-2 pb-2">
-      <form>
-        <!-- 1st row -->
-        <div class="form-row align-items-center">
-          <div class="form-group col-md-1">
-            <label for="inputMethod">Method</label>
-            <select id="inputMethod" class="form-control" v-model="methodSelected" v-on:change="methodIsUpdated" v-bind:style="methodStyle">
-              <option v-for="method in methodList">{{ method }}</option>
-            </select>
-          </div>
-          <div class="form-group col-md-2">
-            <label for="inputService">Service</label>
-            <select id="inputService" class="form-control" v-model="serviceSelected" v-on:change="serviceIsUpdated" v-bind:style="serviceStyle">
-              <option v-for="service in serviceList">{{ service }}</option>
-            </select>
-          </div>
-          <div class="form-group col-md-2">
-            <label for="inputId">Id</label>
-            <select id="inputId" class="form-control" v-model="idSelected" v-on:change="idIsUpdated">
-              <option v-for="id in idList">{{ id }}</option>
-            </select>
-          </div>
-          <div class="form-group col-md-2">
-            <label for="inputResourceType">Resource Type</label>
-            <select id="inputResourceType" class="form-control" v-model="resourceTypeSelected" v-on:change="resourceTypeIsUpdated" v-bind:style="resourceTypeStyle">
-              <option v-for="resourceType in resourceTypeList">{{ resourceType }}</option>
-            </select>
-          </div>
-          <div class="form-group col-md-3">
-            <label for="inputResourceName">Resource Name</label>
-            <select id="inputResourceName" class="form-control" v-model="resourceNameSelected" v-on:change="resourceNameIsUpdated" v-bind:style="resourceNameStyle">
-              <option v-for="resourceName in resourceNameList">{{ resourceName }}</option>
-            </select>
-          </div>
-          <div class="form-group col-md-2">
-            <label for="inputQuery">query</label>
-            <input type="text" class="form-control" id="inputQuery" v-model="query" v-bind:style="queryStyle">
-          </div>
-        </div>
-
-        <!-- 2nd row -->
-        <div class="form-row" id="second-line">
-          <div class="form-group col-md-3"></div>
-          <div class="form-group col-md-2">
-            <label>{{ deviceType }}</label>
-          </div>
-        </div>
-
-        <!-- 3rd row -->
-        <div class="form-row">
-          <div class="input-group mb-2 mx-1">
-            <div class="input-group-prepend">
-              <div class="input-group-text">Body data</div>
-            </div>
-            <input type="text" class="form-control" id="inputBody" v-model="body" v-bind:style="bodyStyle">
-          </div>
-        </div>
-
-      </form>
-    </div>
+    <main role="main" class="container">
+			<router-view></router-view>
+		</main>
   </div>
 
-  <!-- Request & Response -->
-  <div class="card">
-    <!-- R&R header-->
-    <div class="card-header py-1">
-      <div class="row">
-        <div class="col-auto h5 mt-2">Request & Response</div>
-      </div>
-    </div>
-
-    <!-- R&R body -->
-    <div class="card-body" id="request-response-body">
-      <div id="request-response-wrapper">
-        <ul class="list-group"  id="request-response-list">
-          <li class="list-group-item" >{{request}}</li>
-          <li class="list-group-item" >{{statusCode}}</li>
-          <li class="list-group-item" ><pre>{{response}}</pre></li>
-        </ul>
-      </div>
-    </div>
-  </div>
-
-  <!-- LOG -->
-  <div class="card">
-    <!-- LOG header-->
-    <div class="card-header py-1">
-      <div class="row">
-        <div class="col-auto h5 mt-2">LOG</div>
-        <div class="col"></div>
-
-        <!-- Order block -->
-        <div class="col-auto pl-0">
-          <div class="input-group border ml-2">
-            <div class="input-group-prepend">
-              <span class="input-group-text">Order</span>
+  <!-- Template -->
+  <script type="text/x-template" id="tmpl-page-home">
+    <div>
+      <!-- input data -->
+      <div class="card mb-3">
+        <!-- input data header -->
+        <div class="card-header py-1">
+          <div class="row">
+            <div class="col-auto h5 mt-2">Send Request</div>
+            <div class="col"></div>
+            <div class="col-auto mt-2"> {{scheme}}://{{elApiServer}}{{prefix}}</div>
+            <div class="col-auto">
             </div>
-            <!-- ラジオボタン:Normal -->
-            <div class="form-check form-check-inline pl-2">
-              <input type="radio" class="form-check-input" id="normalOrder" v-model="rbOrder" value="normalOrder" v-on:change="updateRbOrder">
-              <label for="normalOrder" class="form-check-label">Normal</label>
-            </div>
-            <!-- ラジオボタン:Reverse -->
-            <div class="form-check form-check-inline pl-0 mr-0">
-              <input type="radio" class="form-check-input" id="reverseOrder" v-model="rbOrder" value="reverseOrder" v-on:change="updateRbOrder">
-              <label for="reverseOrder" class="form-check-label ">Reverse</label>
+            <div class="col-auto mt-1 pl-0">
+              <!-- SENDボタン -->
+              <button type="button" class="btn btn-secondary btn-sm" v-on:click="buttonClickSend" >SEND</button>
             </div>
           </div>
         </div>
 
-        <div class="col-auto mt-1 pl-0">
-          <!-- CLEARボタン -->
-          <button type="button" class="btn btn-secondary btn-sm" v-on:click="clearLog">CLEAR</button>
-          <!-- SAVEボタン -->
-          <button type="button" class="btn btn-secondary btn-sm" v-on:click="saveLog">SAVE</button>
+        <!-- input data body -->
+        <div class="card-body pt-2 pb-2">
+          <form>
+            <!-- 1st row -->
+            <div class="form-row align-items-center">
+              <div class="form-group col-md-1">
+                <label for="inputMethod">Method</label>
+                <select id="inputMethod" class="form-control" v-model="methodSelected" v-on:change="methodIsUpdated" v-bind:style="methodStyle">
+                  <option v-for="method in methodList">{{ method }}</option>
+                </select>
+              </div>
+              <div class="form-group col-md-2">
+                <label for="inputService">Service</label>
+                <select id="inputService" class="form-control" v-model="serviceSelected" v-on:change="serviceIsUpdated" v-bind:style="serviceStyle">
+                  <option v-for="service in serviceList">{{ service }}</option>
+                </select>
+              </div>
+              <div class="form-group col-md-2">
+                <label for="inputId">Id</label>
+                <select id="inputId" class="form-control" v-model="idSelected" v-on:change="idIsUpdated">
+                  <option v-for="id in idList">{{ id }}</option>
+                </select>
+              </div>
+              <div class="form-group col-md-2">
+                <label for="inputResourceType">Resource Type</label>
+                <select id="inputResourceType" class="form-control" v-model="resourceTypeSelected" v-on:change="resourceTypeIsUpdated" v-bind:style="resourceTypeStyle">
+                  <option v-for="resourceType in resourceTypeList">{{ resourceType }}</option>
+                </select>
+              </div>
+              <div class="form-group col-md-3">
+                <label for="inputResourceName">Resource Name</label>
+                <select id="inputResourceName" class="form-control" v-model="resourceNameSelected" v-on:change="resourceNameIsUpdated" v-bind:style="resourceNameStyle">
+                  <option v-for="resourceName in resourceNameList">{{ resourceName }}</option>
+                </select>
+              </div>
+              <div class="form-group col-md-2">
+                <label for="inputQuery">query</label>
+                <input type="text" class="form-control" id="inputQuery" v-model="query" v-bind:style="queryStyle">
+              </div>
+            </div>
+
+            <!-- 2nd row -->
+            <div class="form-row" id="second-line">
+              <div class="form-group col-md-3"></div>
+              <div class="form-group col-md-2">
+                <label>{{ deviceType }}</label>
+              </div>
+            </div>
+
+            <!-- 3rd row -->
+            <div class="form-row">
+              <div class="input-group mb-2 mx-1">
+                <div class="input-group-prepend">
+                  <div class="input-group-text">Body data</div>
+                </div>
+                <input type="text" class="form-control" id="inputBody" v-model="body" v-bind:style="bodyStyle">
+              </div>
+            </div>
+
+          </form>
         </div>
       </div>
-    </div>
 
-    <!-- LOG body -->
-    <div class="card-body" id="message-monitor-body">
-      <div id="message-list-wrapper">
-        <ul class="list-group" id="message-list" v-on:keyup.stop v-on:keydown.stop>
-          <li class="list-group-item d-flex align-items-start" id="message-monitor-header" tabindex="0">
-            <span class="col1">HH MM SS</span>
-            <span class="col2">DIR</span>
-            <span class="col3">DATA</span>
-          </li>
-          <!-- <li v-for="message in message_list" class="list-group-item" v-bind:id="message.id" tabindex="0" v-on:focus="showmessageDetail" v-on:keydown="upDownList" > -->
-          <li v-for="message in message_list" class="list-group-item d-flex align-items-start" v-bind:id="message.id" tabindex="0">
-            <span class="col1">{{ message.timeStamp }}</span>
-            <span class="col2">{{ message.direction }}</span>
-            <span v-if="message.direction === 'REQ'" class="col3">{{ message.body }}</span>
-            <span v-else class="col3">status code: {{ message.statusCode }}<pre>{{ message.body }}</pre></span>
-          </li>
-        </ul>
+      <!-- Request & Response -->
+      <div class="card">
+        <!-- R&R header-->
+        <div class="card-header py-1">
+          <div class="row">
+            <div class="col-auto h5 mt-2">Request & Response</div>
+          </div>
+        </div>
+
+        <!-- R&R body -->
+        <div class="card-body" id="request-response-body">
+          <div id="request-response-wrapper">
+            <ul class="list-group"  id="request-response-list">
+              <li class="list-group-item" >{{request}}</li>
+              <li class="list-group-item" >{{statusCode}}</li>
+              <li class="list-group-item" ><pre>{{response}}</pre></li>
+            </ul>
+          </div>
+        </div>
       </div>
-    </div>
 
-  </div>
-</div>
-</main>
+      <!-- LOG -->
+      <div class="card">
+        <!-- LOG header-->
+        <div class="card-header py-1">
+          <div class="row">
+            <div class="col-auto h5 mt-2">LOG</div>
+            <div class="col"></div>
 
-<script src="/lib/jquery-3.3.1.min.js"></script>
-<!-- <script src="/lib/popper.min.js"></script> -->
-<script src="/lib/bootstrap/js/bootstrap.min.js"></script>
-<script src="/lib/vue.min.js"></script>
-<script src="/lib/vue-router.min.js"></script>
-<script src="/elwebapitool.js"></script>
+            <!-- Order block -->
+            <div class="col-auto pl-0">
+              <div class="input-group border ml-2">
+                <div class="input-group-prepend">
+                  <span class="input-group-text">Order</span>
+                </div>
+                <!-- ラジオボタン:Normal -->
+                <div class="form-check form-check-inline pl-2">
+                  <input type="radio" class="form-check-input" id="normalOrder" v-model="rbOrder" value="normalOrder" v-on:change="rbOrderIsChanged">
+                  <label for="normalOrder" class="form-check-label">Normal</label>
+                </div>
+                <!-- ラジオボタン:Reverse -->
+                <div class="form-check form-check-inline pl-0 mr-0">
+                  <input type="radio" class="form-check-input" id="reverseOrder" v-model="rbOrder" value="reverseOrder" v-on:change="rbOrderIsChanged">
+                  <label for="reverseOrder" class="form-check-label ">Reverse</label>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-auto mt-1 pl-0">
+              <!-- CLEARボタン -->
+              <button type="button" class="btn btn-secondary btn-sm" v-on:click="clearButtonisClicked">CLEAR</button>
+              <!-- SAVEボタン -->
+              <button type="button" class="btn btn-secondary btn-sm" v-on:click="saveButtonisClicked">SAVE</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- LOG body -->
+        <div class="card-body" id="message-monitor-body">
+          <div id="message-list-wrapper">
+            <ul class="list-group" id="message-list" v-on:keyup.stop v-on:keydown.stop>
+              <li class="list-group-item d-flex align-items-start" id="message-monitor-header" tabindex="0">
+                <span class="col1">HH MM SS</span>
+                <span class="col2">DIR</span>
+                <span class="col3">DATA</span>
+              </li>
+              <!-- <li v-for="message in message_list" class="list-group-item" v-bind:id="message.id" tabindex="0" v-on:focus="showmessageDetail" v-on:keydown="upDownList" > -->
+              <li v-for="message in message_list" class="list-group-item d-flex align-items-start" v-bind:id="message.id" tabindex="0">
+                <span class="col1">{{ message.timeStamp }}</span>
+                <span class="col2">{{ message.direction }}</span>
+                <span v-if="message.direction === 'REQ'" class="col3">{{ message.body }}</span>
+                <span v-else class="col3">status code: {{ message.statusCode }}<pre>{{ message.body }}</pre></span>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+      </div>
+    </div>  
+  </script>
+
+  <script type="text/x-template" id="tmpl-page-setting">
+    <div>Contents for Setting</div>
+  </script>
+
+  <script type="text/x-template" id="tmpl-page-help">
+    <div>Contents for Help</div>
+  </script>
+
+
+
+  <script src="/lib/jquery-3.3.1.min.js"></script>
+  <!-- <script src="/lib/popper.min.js"></script> -->
+  <script src="/lib/bootstrap/js/bootstrap.min.js"></script>
+  <script src="/lib/vue.min.js"></script>
+  <script src="/lib/vue-router.min.js"></script>
+  <script src="/elwebapitool.js"></script>
 
 </body>
 </html>

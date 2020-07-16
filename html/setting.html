@@ -1,0 +1,130 @@
+<!-- configuration.html for elwebapitool-->
+<!-- 2020.06.23 -->
+
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <title>ECHONET Lite Appendix Viewer</title>
+  <link rel="stylesheet" href="lib/bootstrap/css/bootstrap.min.css">
+</head>
+
+<body>
+  <header>
+    <div class="navbar navbar-dark bg-dark shadow-sm">
+      <div class="container d-flex justify-content-between">
+        <a href="#" class="navbar-brand">
+          <h1 id="note-title" class="h6">Settings</h1>
+        </a>
+      </div>
+    </div>
+  </header>
+  <main role="main">
+    <div class="pt-3">
+      <div class="container">
+        <form>
+          <div class="form-row">
+            <div class="input-group mb-2 mx-1">
+              <div class="input-group-prepend">
+                <div class="input-group-text">scheme</div>
+              </div>
+              <div class="form-check mt-2 mx-2">
+                <input class="form-check-input" type="radio" name="scheme" id="https" value="https">
+                <label class="form-check-label" for="https">
+                  https
+                </label>
+              </div>
+              <div class="form-check mt-2 mx-2">
+                <input class="form-check-input" type="radio" name="scheme" id="http" value="http" disabled>
+                <label class="form-check-label" for="http">
+                  http
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="input-group mb-2 mx-1">
+              <div class="input-group-prepend">
+                <div class="input-group-text">server</div>
+              </div>
+              <input type="text" class="form-control" id="server" >
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="input-group mb-2 mx-1">
+              <div class="input-group-prepend">
+                <div class="input-group-text">prefix</div>
+              </div>
+              <input type="text" class="form-control" id="prefix" >
+            </div>
+          </div>
+          
+          <div class="form-row">
+            <div class="input-group mb-2 mx-1">
+              <div class="input-group-prepend">
+                <div class="input-group-text">apiKey</div>
+              </div>
+              <input type="text" class="form-control" id="apiKey" >
+            </div>
+          </div>
+          <button type="button" class="btn btn-Set" onclick="buttonUpdate()">Update</button>
+          <button type="button" class="btn btn-Cancel" onclick="buttonCancel()">Cancel</button>
+
+        <p id="note-content"></p>
+      </div>
+    </div>
+  </main>
+
+  <!-- Bootstrap -->
+  <script src="lib/jquery-3.3.1.min.js"></script>
+  <script src="lib/popper.min.js"></script>
+  <script src="lib/bootstrap/js/bootstrap.min.js"></script>
+
+  <script>
+    showContents();
+
+    window.addEventListener('focus', () => {
+      setTimeout(() => {
+        showContents();
+      }, 500);
+    }, false);
+
+    function showContents() {
+      console.log("config1:", window.localStorage.getItem('config'));
+      let config = JSON.parse(window.localStorage.getItem('config'));
+      console.log("config2:", config);
+      https.checked = true;
+      server.value = config.server;
+      prefix.value = config.prefix;
+      apiKey.value = config.apiKey;
+      // let scheme = window.localStorage.getItem('scheme');
+      // let server = window.localStorage.getItem('server');
+      // let prefix = window.localStorage.getItem('prefix');
+      // console.log("config:", scheme, server, prefix)
+      // $('#server').text(server);
+      // $('#prefix').text(prefix);
+    }
+
+    function buttonUpdate(){
+      const config = { "scheme":'https', "server":server.value, "prefix":prefix.value, "apiKey":apiKey.value };
+      console.log("config3:", config);
+      window.localStorage.setItem('Y', "configY");
+      let tmp = window.localStorage.getItem('Y')
+      console.log("config4:", tmp);
+      window.localStorage.setItem('X', {"aaa":"configX"});
+      tmp = window.localStorage.getItem('X')
+      console.log("config5:", tmp, tmp.aaa);
+      window.opener.postMessage( "updateConfig", "*" );
+      // window.close();
+    }
+    function buttonCancel(){
+      window.close();
+    }
+  </script>
+</body>
+
+</html>
