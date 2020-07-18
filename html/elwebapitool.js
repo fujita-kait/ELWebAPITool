@@ -1,5 +1,5 @@
 // elwebapitool.js for elwebapitool(client side)
-// 2020.07.16
+// 2020.07.18
 // Created by Hiroyuki Fujita
 'use strict';
 
@@ -20,7 +20,7 @@ let g_idList =[]; // [<deviceId>]
 //   accessElServer(vm.scheme, vm.elApiServer, vm.apiKey, "GET", vm.prefix, "/devices", "", "", "", "", "")
 // };
 
-// ルーティングの設定
+// component:template_homeの定義
 const template_home = {
   template:'#tmpl-page-home',
   data:() => {return (bind_data);},
@@ -51,59 +51,32 @@ const template_home = {
     // 入力フィールド Method の値が変更された場合の処理
     // resourceTypeListとresourceNameListをupdate
     methodIsUpdated: function () {
-      const methodSelected=this.methodSelected;
-      const serviceSelected=this.serviceSelected;
-      const idSelected=this.idSelected;
-      const resourceTypeSelected=this.resourceTypeSelected;
       // serviceとdevice idがblankでなく、device descriptionが存在する場合
-      if ((serviceSelected !== "") && (idSelected !== "")) {
-        const deviceId = idSelected.slice(1); // remove "/" from idSelected
-        // const deviceDescription = deviceDescriptions[deviceId];
+      if ((this.serviceSelected !== "") && (this.idSelected !== "")) {
+        const deviceId = this.idSelected.slice(1); // remove "/" from idSelected
         let resourceNameList = [""];
-
-        // resourceNameList作成
-        // if (deviceDescription !== undefined) {
-          if (g_deviceInfo[deviceId] !== undefined) {
-            switch (methodSelected) {
+        if (g_deviceInfo[deviceId] !== undefined) {
+          switch (this.methodSelected) {
             case "GET":
-              console.log("GETが選択されました");
               resourceNameList = g_deviceInfo[deviceId].propertyList;
-              // if (deviceDescription.properties !== undefined) {
-              //   for (let resourceName of Object.keys(deviceDescription.properties)) {
-              //     resourceNameList.push("/" + resourceName);
-              //   }
-              // }
+              vm.resourceTypeSelected = "/properties";
               break;
             case "PUT":
-              console.log("PUTが選択されました");
               resourceNameList = g_deviceInfo[deviceId].propertyListWritable;
-              // writableがtrueのものでresourceNameList作成
-              // if (deviceDescription.properties !== undefined) {
-              //   for (let resourceName of Object.keys(deviceDescription.properties)) {
-              //     if (deviceDescription.properties[resourceName].writable === true){
-              //       resourceNameList.push("/" + resourceName);
-              //     }
-              //   }
-              // }
+              vm.resourceTypeSelected = "/properties";
               break;
             case "POST":
-              console.log("POSTが選択されました");
               resourceNameList = g_deviceInfo[deviceId].actionList;
-              // if (deviceDescription.actions !== undefined) {
-              //   for (let resourceName of Object.keys(deviceDescription.actions)) {
-              //     resourceNameList.push("/" + resourceName);
-              //   }
-              // }
+              vm.resourceTypeSelected = "/actions";
               break;
             case "DELETE":
-              console.log("DELETEが選択されました");
               break;
           }
-          resourceNameList.sort();
-          vm.resourceNameList = resourceNameList;    
-
+          if (vm.resourceTypeSelected !== ""){
+            vm.resourceNameList = resourceNameList;
+            vm.resourceNameSelected = "";
+          }
         }
-  
       }
     },
 
@@ -111,9 +84,7 @@ const template_home = {
     // ""が選択されたら、入力フィールドのId, Resource Type, Resource Name, queryをブランクにする
     // devicesが選択されたらg_idListを更新する
     serviceIsUpdated: function () {
-      const serviceSelected=this.serviceSelected;
-      console.log("serviceIsUpdated", serviceSelected);
-      if (serviceSelected == "") {
+      if (this.serviceSelected == "") {
         vm.idList = [""];
         vm.resourceTypeList = [""];
         vm.resourceNameList = [""];
@@ -130,51 +101,28 @@ const template_home = {
     // 選択されたidのdevice descriptionが存在する場合は、resourceTypeとresourceNameを更新する
     idIsUpdated: function () {
       const idSelected=this.idSelected;
-      console.log("idが更新されました。", idSelected);
-      if (idSelected == "") {
-        vm.resourceTypeList = [""];
-        vm.resourceNameList = [""];
-        vm.deviceType ="";
-      } else {
-        vm.resourceTypeList = [""];
-        vm.resourceNameList = [""];
-        vm.resourceTypeSelected = "";
-        vm.resourceNameSelected = "";
+      vm.resourceTypeList = [""];
+      vm.resourceNameList = [""];
+      vm.deviceType ="";
+      vm.resourceTypeSelected = "";
+      vm.resourceNameSelected = "";
 
-        const deviceId = idSelected.slice(1); // remove "/"
-        // const deviceDescription = deviceDescriptions[deviceId];
-        const deviceInfo = g_deviceInfo[deviceId];
-        // if (deviceDescription !== undefined){
-        if (deviceInfo !== undefined){
-            // vm.deviceType = deviceDescription.deviceType;
-            vm.deviceType = deviceInfo.deviceType;
-          // Update resourceTypeList
-          let resourceTypeList = [""];
-          // if (deviceDescription.properties !== undefined) {
-          //   resourceTypeList.push("/properties");
-          // }
-          if (deviceInfo.propertyList !== undefined) {
-            resourceTypeList.push("/properties");
-          }
-          // if (deviceDescription.actions !== undefined) {
-          //   resourceTypeList.push("/actions");
-          // }
-          if (deviceInfo.actionList !== undefined) {
-            resourceTypeList.push("/actions");
-          }
-          // if (deviceDescription.events !== undefined) {
-          //   resourceTypeList.push("/events");
-          // }
-          console.log("resourceTypeList:", resourceTypeList);
-          vm.resourceTypeList = resourceTypeList;
-          vm.resourceTypeSelected = (resourceTypeList[1]) ? resourceTypeList[1] : "";
-          // resourceTypeIsUpdated(idSelected, vm.resourceTypeSelected);
-          updateResourceName(vm.methodSelected, idSelected, vm.resourceTypeSelected);
-          vm.resourceNameSelected = (vm.resourceNameList[1]) ? vm.resourceNameList[1] : "";
-        } else {
-          vm.deviceType ="";
+      const deviceId = idSelected.slice(1); // remove "/"
+      const deviceInfo = g_deviceInfo[deviceId];
+      if (deviceInfo !== undefined){
+        vm.deviceType = deviceInfo.deviceType;
+        let resourceTypeList = [""];
+        if (deviceInfo.propertyList !== undefined) {
+          resourceTypeList.push("/properties");
         }
-      }
+        if (deviceInfo.actionList !== undefined) {
+          resourceTypeList.push("/actions");
+        }
+        vm.resourceTypeList = resourceTypeList;
+        vm.resourceTypeSelected = (resourceTypeList[1]) ? resourceTypeList[1] : "";
+        updateResourceName(vm.methodSelected, idSelected, vm.resourceTypeSelected);
+        vm.resourceNameSelected = (vm.resourceNameList[1]) ? vm.resourceNameList[1] : "";
+      } 
     },
 
     // 入力フィールド resourceType の値が変更された場合の処理
@@ -186,7 +134,6 @@ const template_home = {
     // 入力フィールド resourceName の値が変更された場合の処理
     resourceNameIsUpdated: function () {
       const resourceNameSelected=this.resourceNameSelected;
-      console.log("resourceNameIsUpdated",resourceNameSelected);
     },
 
     // ログのorderのラジオボタンが選択された時の処理
@@ -244,6 +191,7 @@ let bind_data = {
   bodyStyle: {color: 'black'},
 };
 
+// routeとcomponentの定義
 const template_setting = {template: '#tmpl-page-setting',data:() => {return (bind_data);}};
 const template_help =    {template: '#tmpl-page-help',data:() => {return (bind_data);}};
 const router = new VueRouter({
@@ -329,34 +277,25 @@ function saveLog() {
 }
 
 function updateResourceName(methodSelected, idSelected, resourceTypeSelected) {
-  console.log("updateResourceName", methodSelected, idSelected, resourceTypeSelected)
-  vm.resourceNameList = [""]; // resource nameをクリア
-
+  let resourceNameList = [];
   if (resourceTypeSelected !== "") {
-    let resourceNameList = [""];
     const deviceId = idSelected.slice(1); // remove "/"
-    // const deviceDescription = deviceDescriptions[deviceId];
-    const resourceType = resourceTypeSelected.slice(1); // remove "/"
+    // const resourceType = resourceTypeSelected.slice(1); // remove "/"
     const deviceInfo = g_deviceInfo[deviceId];
     if (deviceInfo !== undefined) {
-      // if (deviceDescription[resourceType] !== undefined) {
-      // for (let propertyName of Object.keys(deviceDescription[resourceType])) {
-      //   resourceNameList.push("/" + propertyName);
-      // }
-      if ((resourceType == "properties") && (methodSelected == "GET")) {
+      if ((resourceTypeSelected == "/properties") && (methodSelected == "GET")) {
         resourceNameList = deviceInfo.propertyList;
-      }
-      if ((resourceType == "properties") && (methodSelected == "PUT")) {
+      }  
+      if ((resourceTypeSelected == "/properties") && (methodSelected == "PUT")) {
         resourceNameList = deviceInfo.propertyListWritable;
       }
-      if ((resourceType == "actions") && (methodSelected == "POST")) {
+      if ((resourceTypeSelected == "/actions") && (methodSelected == "POST")) {
         resourceNameList = deviceInfo.actionList;
       }
-      resourceNameList.sort();
-      vm.resourceNameList = resourceNameList;
       vm.resourceNameSelected = (resourceNameList[1]) ? resourceNameList[1] : "";   
     }
   }
+  vm.resourceNameList = resourceNameList;
 }
 
 
@@ -450,15 +389,14 @@ ws.onmessage = function(event){
     // deviceDescriptionsにdeviceIdをkey, device descriptionをvalueとして追加
     const pathElements = obj.path.split('/');  // pathを'/'で分割して要素を配列にする
     const deviceId = pathElements[pathElements.length - 1];  // 配列の最後の要素が deviceId
-    // deviceDescriptions[deviceId] = obj.response;
-
+    
     // Device Desvriptionをもとにg_deviceInfoを更新する
     const deviceDescription = obj.response;
     let deviceInfo = {
       "deviceType":deviceDescription.deviceType,
-      "propertyList":[],
-      "propertyListWritable":[],
-      "actionList":[]
+      "propertyList":[""],
+      "propertyListWritable":[""],
+      "actionList":[""]
     };
 
     // propertyList,propertyListWritableの作成
@@ -478,6 +416,10 @@ ws.onmessage = function(event){
       }
     }
 
+    deviceInfo.propertyList.sort();    
+    deviceInfo.propertyListWritable.sort();    
+    deviceInfo.actionList.sort();    
+
     g_deviceInfo[deviceId] = deviceInfo;
     console.log("g_deviceInfo", g_deviceInfo);
 
@@ -496,7 +438,6 @@ ws.onmessage = function(event){
     vm.resourceTypeList = resourceTypeList;
     
     // 入力フィールドResouce TypeとResource Nameの表示項目の更新
-    // resourceTypeIsUpdated("/"+deviceId, "/properties");
     updateResourceName("GET", "/"+deviceId, "/properties");
     vm.resourceTypeSelected = (resourceTypeList[1]) ? resourceTypeList[1] : "";
 
