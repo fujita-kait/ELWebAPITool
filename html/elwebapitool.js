@@ -3,10 +3,22 @@
 // Created by Hiroyuki Fujita
 'use strict';
 
-const serverURL = "/elwebapitool/";
-let packetId = 0;
-let dataLogArray = [];
-let deviceDescriptions = {};
+const g_serverURL = "/elwebapitool/";
+let g_packetId = 0;
+let g_dataLogArray = [];
+let g_deviceInfo ={}; 
+  // {<deviceId>:{
+  //   "deviceType":<deviceType>, 
+  //   "propertyList":[<resourceName>], 
+  //   "propertyListWritable":[<resourceName>]
+  //   "actionList":[<resourceName>]}}
+let g_idList =[]; // [<deviceId>]
+
+// 起動時の処理
+// GET /v1/devices を実行し、g_idListを作成する
+// window.onload = (event) => {
+//   accessElServer(vm.scheme, vm.elApiServer, vm.apiKey, "GET", vm.prefix, "/devices", "", "", "", "", "")
+// };
 
 // ルーティングの設定
 const template_home = {
@@ -14,139 +26,90 @@ const template_home = {
   data:() => {return (bind_data);},
   methods: {
     // SENDボタンがクリックされたときの処理
-    buttonClickSend: function () {
-      const scheme=this.scheme;
-      const elApiServer=this.elApiServer;
-      const apiKey=this.apiKey;
-      const methodSelected=this.methodSelected;
-      const prefix=this.prefix;
-      const serviceSelected=this.serviceSelected;
-      const idSelected=this.idSelected;
-      const resourceTypeSelected=this.resourceTypeSelected;
-      const resourceNameSelected=this.resourceNameSelected;
-      const query=this.query;
-      const body=this.body;
+    sendButtonIsClicked: function () {
       console.log("SENDボタンがクリックされました。");
-      // console.log(" scheme:", scheme,", elApiServer:", elApiServer, ", apiKey:", apiKey);
-      // console.log(" methodSelected:", methodSelected, ", prefix:", prefix, ", serviceSelected:", serviceSelected, ", idSelected:", idSelected, ", resourceTypeSelected:", resourceTypeSelected);
-      // console.log(" resourceName:", resourceNameSelected, ", query:", query, ", body:", body);
-      
-      let path = prefix;
-      if (serviceSelected !== "") {
-        path += serviceSelected;
-        if (idSelected !== "") {
-          path += idSelected;
-          if (resourceTypeSelected !== "") {
-            path += resourceTypeSelected;
-            if (resourceNameSelected !== "") {
-              path += resourceNameSelected;
-              if (query !== "") {
-                path += ("?"+query);
-              }
-            }
-          }
-        }
-      }
-      console.log(" path:",path);
-    
-      let message = {
-        hostname: elApiServer,
-        method:   methodSelected, 
-        path:     path
-      };
-      if(methodSelected == "GET"){
-          message.headers = { "X-Elapi-key": apiKey };
-          message.body    = "";
-      }
-      if((methodSelected == "PUT")||(methodSelected == "POST")){
-        message.headers = {
-          "X-Elapi-key":    apiKey,
-          "Content-Type":   "application/json",
-          "Content-Length": body.length
-        };
-        message.body = body;
-      }
-    
-      console.log(" message: ", message);
-      const request = new XMLHttpRequest();
-      request.open('PUT', serverURL + 'send');
-      request.setRequestHeader("Content-type", "application/json");
-      request.send(JSON.stringify(message));
+      // ECHONET Lite WebApi serverにアクセスする
+      const message = accessElServer(this.scheme, this.elApiServer, this.apiKey, 
+        this.methodSelected, this.prefix, this.serviceSelected, this.idSelected, 
+        this.resourceTypeSelected, this.resourceNameSelected, this.query, this.body);
+
+      // REQUEST表示エリアのデータ設定
       this.request = message.method + " " + this.scheme + "://" +message.hostname + message.path;
     
       // REQUESTをLOGに追加
-      const packet_id = 'packet-' + packetId++;
-      const pkt = {
-        id:packet_id,
+      g_dataLogArray.push({
+        id:'packet-' + g_packetId++,
         timeStamp:timeStamp(),
         direction:"REQ",
         data:message
-      }
-      console.log(" pkt:", pkt);
-      dataLogArray.push(pkt);
+      });
+
+      // ログを表示
       displayLog();
     },
 
-    // 入力フィールド method の値が変更された場合の処理
+    // 入力フィールド Method の値が変更された場合の処理
+    // resourceTypeListとresourceNameListをupdate
     methodIsUpdated: function () {
       const methodSelected=this.methodSelected;
       const serviceSelected=this.serviceSelected;
       const idSelected=this.idSelected;
       const resourceTypeSelected=this.resourceTypeSelected;
-      switch (methodSelected) {
-        case "GET":
-          console.log("GETが選択されました");
-          // serviceとdevice idがblankでなく、device descriptionが存在する場合
-          if ((serviceSelected !== "") && (idSelected !== "")){
-            const deviceId = idSelected.slice(1); // remove "/" from idSelected
-            const deviceDescription = deviceDescriptions[deviceId];
+      // serviceとdevice idがblankでなく、device descriptionが存在する場合
+      if ((serviceSelected !== "") && (idSelected !== "")) {
+        const deviceId = idSelected.slice(1); // remove "/" from idSelected
+        // const deviceDescription = deviceDescriptions[deviceId];
+        let resourceNameList = [""];
 
-            if (deviceDescription !== undefined) {
-              // resourceNameList作成
-              let resourceNameList = [""];
-              if (deviceDescription.properties !== undefined) {
-                for (let propertyName of Object.keys(deviceDescription.properties)) {
-                  resourceNameList.push("/" + propertyName);
-                }
-                resourceNameList.sort();
-                vm.resourceNameList = resourceNameList;    
-              }
-            }
-          }
-          break;
-        case "PUT":
-          console.log("PUTが選択されました");
-          // serviceとdevice idがblankでなく、device descriptionが存在する場合
-          if ((serviceSelected !== "") && (idSelected !== "")){
-            const deviceId = idSelected.slice(1); // remove "/" from idSelected
-            const deviceDescription = deviceDescriptions[deviceId];
-
-            if (deviceDescription !== undefined) {
+        // resourceNameList作成
+        // if (deviceDescription !== undefined) {
+          if (g_deviceInfo[deviceId] !== undefined) {
+            switch (methodSelected) {
+            case "GET":
+              console.log("GETが選択されました");
+              resourceNameList = g_deviceInfo[deviceId].propertyList;
+              // if (deviceDescription.properties !== undefined) {
+              //   for (let resourceName of Object.keys(deviceDescription.properties)) {
+              //     resourceNameList.push("/" + resourceName);
+              //   }
+              // }
+              break;
+            case "PUT":
+              console.log("PUTが選択されました");
+              resourceNameList = g_deviceInfo[deviceId].propertyListWritable;
               // writableがtrueのものでresourceNameList作成
-              let resourceNameList = [""];
-              if (deviceDescription.properties !== undefined) {
-                for (let propertyName of Object.keys(deviceDescription.properties)) {
-                  // writable : trueなら
-                  if (deviceDescription.properties[propertyName].writable === true){
-                    resourceNameList.push("/" + propertyName);
-                  }
-                }
-                resourceNameList.sort();
-                vm.resourceNameList = resourceNameList;    
-              }
-            }
+              // if (deviceDescription.properties !== undefined) {
+              //   for (let resourceName of Object.keys(deviceDescription.properties)) {
+              //     if (deviceDescription.properties[resourceName].writable === true){
+              //       resourceNameList.push("/" + resourceName);
+              //     }
+              //   }
+              // }
+              break;
+            case "POST":
+              console.log("POSTが選択されました");
+              resourceNameList = g_deviceInfo[deviceId].actionList;
+              // if (deviceDescription.actions !== undefined) {
+              //   for (let resourceName of Object.keys(deviceDescription.actions)) {
+              //     resourceNameList.push("/" + resourceName);
+              //   }
+              // }
+              break;
+            case "DELETE":
+              console.log("DELETEが選択されました");
+              break;
           }
-          break;
-        case "POSTが選択されました":
-          console.log("POST");
-          break;
-        case "DELETE":
-          console.log("DELETE");
-          break;
+          resourceNameList.sort();
+          vm.resourceNameList = resourceNameList;    
+
+        }
+  
       }
     },
 
     // 入力フィールド service の値が変更された場合の処理
+    // ""が選択されたら、入力フィールドのId, Resource Type, Resource Name, queryをブランクにする
+    // devicesが選択されたらg_idListを更新する
     serviceIsUpdated: function () {
       const serviceSelected=this.serviceSelected;
       console.log("serviceIsUpdated", serviceSelected);
@@ -158,6 +121,8 @@ const template_home = {
         vm.resourceTypeSelected = "";
         vm.resourceNameSelected = "";
         vm.deviceType = "";
+      } else {
+        vm.idList = g_idList;
       }
     },
 
@@ -177,25 +142,34 @@ const template_home = {
         vm.resourceNameSelected = "";
 
         const deviceId = idSelected.slice(1); // remove "/"
-        const deviceDescription = deviceDescriptions[deviceId];
-
-        if (deviceDescription !== undefined){
-          vm.deviceType = deviceDescription.deviceType;
+        // const deviceDescription = deviceDescriptions[deviceId];
+        const deviceInfo = g_deviceInfo[deviceId];
+        // if (deviceDescription !== undefined){
+        if (deviceInfo !== undefined){
+            // vm.deviceType = deviceDescription.deviceType;
+            vm.deviceType = deviceInfo.deviceType;
           // Update resourceTypeList
           let resourceTypeList = [""];
-          if (deviceDescription.properties !== undefined) {
+          // if (deviceDescription.properties !== undefined) {
+          //   resourceTypeList.push("/properties");
+          // }
+          if (deviceInfo.propertyList !== undefined) {
             resourceTypeList.push("/properties");
           }
-          if (deviceDescription.actions !== undefined) {
+          // if (deviceDescription.actions !== undefined) {
+          //   resourceTypeList.push("/actions");
+          // }
+          if (deviceInfo.actionList !== undefined) {
             resourceTypeList.push("/actions");
           }
-          if (deviceDescription.events !== undefined) {
-            resourceTypeList.push("/events");
-          }
+          // if (deviceDescription.events !== undefined) {
+          //   resourceTypeList.push("/events");
+          // }
           console.log("resourceTypeList:", resourceTypeList);
           vm.resourceTypeList = resourceTypeList;
           vm.resourceTypeSelected = (resourceTypeList[1]) ? resourceTypeList[1] : "";
-          resourceTypeIsUpdated(idSelected, vm.resourceTypeSelected);
+          // resourceTypeIsUpdated(idSelected, vm.resourceTypeSelected);
+          updateResourceName(vm.methodSelected, idSelected, vm.resourceTypeSelected);
           vm.resourceNameSelected = (vm.resourceNameList[1]) ? vm.resourceNameList[1] : "";
         } else {
           vm.deviceType ="";
@@ -204,10 +178,9 @@ const template_home = {
     },
 
     // 入力フィールド resourceType の値が変更された場合の処理
-    //  deviceDescriptionsからidとresourceTypeをkeyにしてresourceNameを取得し、
     //  resourceNameListをupdateする
     resourceTypeIsUpdated: function () {
-      updateResourceName(this.idSelected, this.resourceTypeSelected);
+      updateResourceName(this.methodSelected, this.idSelected, this.resourceTypeSelected);
     },
 
     // 入力フィールド resourceName の値が変更された場合の処理
@@ -216,6 +189,7 @@ const template_home = {
       console.log("resourceNameIsUpdated",resourceNameSelected);
     },
 
+    // ログのorderのラジオボタンが選択された時の処理
     rbOrderIsChanged: function () {
       displayLog();
     },
@@ -232,18 +206,6 @@ const template_home = {
   }
 };
 
-
-const template_setting = {template: '#tmpl-page-setting',data:() => {return (bind_data);}};
-const template_help =    {template: '#tmpl-page-help',data:() => {return (bind_data);}};
-const router = new VueRouter({
-	routes : [
-		{path:'/',        component:template_home},
-		{path:'/home',    component:template_home},
-		{path:'/setting', component:template_setting},
-		{path:'/help',    component:template_help}
-	]
-});
-
 let bind_data = {
   // data from config.json
   scheme: "",
@@ -254,7 +216,7 @@ let bind_data = {
   // input or control on GUI
   methodList: ["GET", "PUT", "POST", "DELETE"],
   methodSelected: "GET",
-  serviceList: [], // [/devices, /groups]
+  serviceList: [""], // [/devices, /groups]
   serviceSelected: "",
   idList: [], // [/<deviceId1>, /<deviceId2>,...]
   idSelected: "",
@@ -280,18 +242,73 @@ let bind_data = {
   resourceNameStyle: {color: 'black'},
   queryStyle: {color: 'black'},
   bodyStyle: {color: 'black'},
-
 };
 
+const template_setting = {template: '#tmpl-page-setting',data:() => {return (bind_data);}};
+const template_help =    {template: '#tmpl-page-help',data:() => {return (bind_data);}};
+const router = new VueRouter({
+	routes : [
+		{path:'/',        component:template_home},
+		{path:'/home',    component:template_home},
+		{path:'/setting', component:template_setting},
+		{path:'/help',    component:template_help}
+	]
+});
+
+// ECHONET Lite WebApi serverにアクセスする
+function accessElServer(scheme, elApiServer, apiKey, methodSelected, prefix, serviceSelected, idSelected, resourceTypeSelected, resourceNameSelected, query, body) {
+  console.log("access ECHONET Lite WebApi server")
+  console.log("serviceSelected:",serviceSelected)
+  // pathの作成
+  let path = prefix;
+  if (serviceSelected !== "") {
+    path += serviceSelected;
+    if (idSelected !== "") {
+      path += idSelected;
+      if (resourceTypeSelected !== "") {
+        path += resourceTypeSelected;
+        if (resourceNameSelected !== "") {
+          path += resourceNameSelected;
+          if (query !== "") {
+            path += ("?"+query);
+          }
+        }
+      }
+    }
+  }
+  console.log(" path:",path);
+
+  const bodyData = (methodSelected == "GET") ? "" : body;
+  let message = {
+    hostname: elApiServer,
+    method:   methodSelected, 
+    path:     path,
+    headers:  {
+      "X-Elapi-key":    apiKey,
+      "Content-Type":   "application/json",
+      "Content-Length": bodyData.length
+    },
+    body:     bodyData
+  };
+  console.log(" message: ", message);
+
+  const request = new XMLHttpRequest();
+  request.open('PUT', g_serverURL + 'send');
+  request.setRequestHeader("Content-type", "application/json");
+  request.send(JSON.stringify(message));
+
+  return message;
+}
+
 function clearLog() {
-  packetId = 0;
-  dataLogArray.length = 0;
+  g_packetId = 0;
+  g_dataLogArray.length = 0;
   vm.message_list = [];
 }
 
 function saveLog() {
   let log = "";
-  for (let dataLog of dataLogArray) {
+  for (let dataLog of g_dataLogArray) {
     if (dataLog.direction == "REQ") { // REQUESTの場合
       log += dataLog.timeStamp + ",REQ," + dataLog.data.method + "," + vm.scheme + "://" + dataLog.data.hostname + dataLog.data.path;
       if (dataLog.data.body == ""){
@@ -306,25 +323,39 @@ function saveLog() {
   // ログ保存をサーバーに依頼
   const message = {log:log};
   const request = new XMLHttpRequest();
-  request.open('POST', serverURL + 'saveLog');
+  request.open('POST', g_serverURL + 'saveLog');
   request.setRequestHeader("Content-type", "application/json");
   request.send(JSON.stringify(message));
 }
 
-function updateResourceName(idSelected, resourceTypeSelected) {
+function updateResourceName(methodSelected, idSelected, resourceTypeSelected) {
+  console.log("updateResourceName", methodSelected, idSelected, resourceTypeSelected)
   vm.resourceNameList = [""]; // resource nameをクリア
 
   if (resourceTypeSelected !== "") {
     let resourceNameList = [""];
     const deviceId = idSelected.slice(1); // remove "/"
-    const deviceDescription = deviceDescriptions[deviceId];
+    // const deviceDescription = deviceDescriptions[deviceId];
     const resourceType = resourceTypeSelected.slice(1); // remove "/"
-    for (let propertyName of Object.keys(deviceDescription[resourceType])) {
-      resourceNameList.push("/" + propertyName);
+    const deviceInfo = g_deviceInfo[deviceId];
+    if (deviceInfo !== undefined) {
+      // if (deviceDescription[resourceType] !== undefined) {
+      // for (let propertyName of Object.keys(deviceDescription[resourceType])) {
+      //   resourceNameList.push("/" + propertyName);
+      // }
+      if ((resourceType == "properties") && (methodSelected == "GET")) {
+        resourceNameList = deviceInfo.propertyList;
+      }
+      if ((resourceType == "properties") && (methodSelected == "PUT")) {
+        resourceNameList = deviceInfo.propertyListWritable;
+      }
+      if ((resourceType == "actions") && (methodSelected == "POST")) {
+        resourceNameList = deviceInfo.actionList;
+      }
+      resourceNameList.sort();
+      vm.resourceNameList = resourceNameList;
+      vm.resourceNameSelected = (resourceNameList[1]) ? resourceNameList[1] : "";   
     }
-    resourceNameList.sort();
-    vm.resourceNameList = resourceNameList;
-    vm.resourceNameSelected = (resourceNameList[1]) ? resourceNameList[1] : ""; 
   }
 }
 
@@ -342,7 +373,6 @@ ws.onopen = function(event){
   console.log("WebSocket: connected");    
 };
 
-
 // server側のconfig.jsonのデータをリクエストする。その値をvmに設定する。
 // XHR 非同期処理
 function reqListener() {
@@ -356,7 +386,7 @@ function reqListener() {
 }
 let oReq = new XMLHttpRequest();
 oReq.addEventListener("load", reqListener);
-oReq.open('GET', serverURL + 'config');
+oReq.open('GET', g_serverURL + 'config');
 oReq.send();
 
 // websocket:受信処理
@@ -365,9 +395,10 @@ oReq.send();
 ws.onmessage = function(event){
   const obj = JSON.parse(event.data);
   console.log("Web socketの受信:");
-  console.log(" hostname:", obj.hostname);
+  console.log(" REQ: " + obj.method + " https://" + obj.hostname,obj.path );
+  // console.log(" hostname:", obj.hostname);
   console.log(" path:", obj.path);
-  console.log(" method:", obj.method);
+  // console.log(" method:", obj.method);
   console.log(" status code:", obj.statusCode);
   console.log(" response:", obj.response);
   vm.statusCode = "status code: " + obj.statusCode;
@@ -380,7 +411,7 @@ ws.onmessage = function(event){
   // serviceListを新規に作成する 
   regex = /\/v1$/;   // 正規表現：行末が'/v1'
   if (regex.test(obj.path)) {
-    deviceDescriptions = {};  // service listを新規で取得したので、deviceDescriptionsを初期化する
+    // deviceDescriptions = {};  // service listを新規で取得したので、deviceDescriptionsを初期化する
     let serviceList = [""];
     if (obj.response.version !== undefined) {
       for (let service of obj.response.version) {
@@ -394,24 +425,24 @@ ws.onmessage = function(event){
   }
 
   // GET /elapi/v1/devices
-  // idListを新規に作成する 
+  // g_idListを新規に作成する 
   regex = /\/devices$/;   // 正規表現：行末が'/devices'
   if (regex.test(obj.path)) {
-    deviceDescriptions = {};  // id listを新規で取得したので、deviceDescriptionsを初期化する
-    let idList = [""];
+    // deviceDescriptions = {};  // id listを新規で取得したので、deviceDescriptionsを初期化する
+    g_idList = [""];
     if (obj.response.devices !== undefined) {
       for (let device of obj.response.devices) {
-        idList.push("/" + device.id);
+        g_idList.push("/" + device.id);
       }
     }
-    console.log("idListの更新:", idList);
-    vm.idList = idList.sort();
+    console.log("idListの更新:", g_idList);
+    vm.idList = g_idList.sort();
     // 入力フィールドidの表示項目の更新
-    vm.idSelected = (idList[1]) ? idList[1] : "";
+    vm.idSelected = (g_idList[1]) ? g_idList[1] : "";
   }
 
   // GET /elapi/v1/devices/<id>
-  // responseはdevice description
+  // responseはdevice description -> g_deviceInfoに情報を追加
   // vm.resourceTypeListにresource typeをpushする
   // vm.resourceNameListにresource nameをpushする
   regex = /\/devices\/([0-9]|[a-z]|[A-Z])+$/; // 正規表現'/devices/'の後、行末まで英数字
@@ -419,7 +450,36 @@ ws.onmessage = function(event){
     // deviceDescriptionsにdeviceIdをkey, device descriptionをvalueとして追加
     const pathElements = obj.path.split('/');  // pathを'/'で分割して要素を配列にする
     const deviceId = pathElements[pathElements.length - 1];  // 配列の最後の要素が deviceId
-    deviceDescriptions[deviceId] = obj.response;
+    // deviceDescriptions[deviceId] = obj.response;
+
+    // Device Desvriptionをもとにg_deviceInfoを更新する
+    const deviceDescription = obj.response;
+    let deviceInfo = {
+      "deviceType":deviceDescription.deviceType,
+      "propertyList":[],
+      "propertyListWritable":[],
+      "actionList":[]
+    };
+
+    // propertyList,propertyListWritableの作成
+    if (deviceDescription.properties !== undefined) {
+      for (let resourceName of Object.keys(deviceDescription.properties)) {
+        deviceInfo.propertyList.push("/" + resourceName);
+        if (deviceDescription.properties[resourceName].writable === true){
+          deviceInfo.propertyListWritable.push("/" + resourceName);
+        }
+      }
+    }
+
+    // actionListの作成
+    if (deviceDescription.actions !== undefined) {
+      for (let resourceName of Object.keys(deviceDescription.actions)) {
+        deviceInfo.actionList.push("/" + resourceName);
+      }
+    }
+
+    g_deviceInfo[deviceId] = deviceInfo;
+    console.log("g_deviceInfo", g_deviceInfo);
 
     // resourceTypeListを新規に作成する
     let resourceTypeList = [""];
@@ -437,7 +497,7 @@ ws.onmessage = function(event){
     
     // 入力フィールドResouce TypeとResource Nameの表示項目の更新
     // resourceTypeIsUpdated("/"+deviceId, "/properties");
-    updateResourceName("/"+deviceId, "/properties");
+    updateResourceName("GET", "/"+deviceId, "/properties");
     vm.resourceTypeSelected = (resourceTypeList[1]) ? resourceTypeList[1] : "";
 
     // 入力フィールドidの下のdeviceTypeの更新
@@ -445,14 +505,14 @@ ws.onmessage = function(event){
   }
   
   // RESPONSEをLOGに追加
-  const packet_id = 'packet-' + packetId++;
+  const packet_id = 'packet-' + g_packetId++;
   const pkt = {
     id:packet_id,
     timeStamp:timeStamp(),
     direction:"RES",
     data:obj
   }
-  dataLogArray.push(pkt);
+  g_dataLogArray.push(pkt);
   
   // LOG表示の更新
   displayLog();
@@ -460,7 +520,7 @@ ws.onmessage = function(event){
 
 function displayLog() {
   let log = [];
-  for (let dataLog of dataLogArray) {
+  for (let dataLog of g_dataLogArray) {
     let message = {
       id: dataLog.id,
       timeStamp: dataLog.timeStamp,
@@ -491,87 +551,3 @@ function timeStamp() {
   second = (second.length == 1) ? ("0" + second) : second;
   return hour + ":" + minute + ":" + second;
 }
-
-
-
-
-
-
-// GUIのSENDボタンをクリックした場合の処理
-// 入力データをREST PUT /elwebapitool/send
-// function buttonClickSend(scheme, elApiServer, apiKey, methodSelected, prefix, 
-//   serviceSelected, idSelected, resourceTypeSelected, resourceNameSelected, query, body) {
-// function buttonClickSend() {
-//   const scheme=vm.scheme;
-//   const elApiServer=vm.elApiServer;
-//   const apiKey=vm.apiKey;
-//   const methodSelected=vm.methodSelected;
-//   const prefix=vm.prefix;
-//   const serviceSelected=vm.serviceSelected;
-//   const idSelected=vm.idSelected;
-//   const resourceTypeSelected=vm.resourceTypeSelected;
-//   const resourceNameSelected=vm.resourceNameSelected;
-//   const query=vm.query;
-//   const body=vm.body;
-//   console.log("SENDボタンがクリックされました。");
-//   console.log(" scheme:", scheme,", elApiServer:", elApiServer, ", apiKey:", apiKey);
-//   // console.log(" methodSelected:", methodSelected, ", prefix:", prefix, ", serviceSelected:", serviceSelected, ", idSelected:", idSelected, ", resourceTypeSelected:", resourceTypeSelected);
-//   // console.log(" resourceName:", resourceNameSelected, ", query:", query, ", body:", body);
-  
-//   let path = prefix;
-//   if (serviceSelected !== "") {
-//     path += serviceSelected;
-//     if (idSelected !== "") {
-//       path += idSelected;
-//       if (resourceTypeSelected !== "") {
-//         path += resourceTypeSelected;
-//         if (resourceNameSelected !== "") {
-//           path += resourceNameSelected;
-//           if (query !== "") {
-//             path += ("?"+query);
-//           }
-//         }
-//       }
-//     }
-//   }
-//   // console.log(" path:",path);
-
-//   let message = {
-//     hostname: elApiServer,
-//     method:   methodSelected, 
-//     path:     path
-//   };
-//   if(methodSelected == "GET"){
-//      message.headers = { "X-Elapi-key": apiKey };
-//      message.body    = "";
-//   }
-//   if((methodSelected == "PUT")||(methodSelected == "POST")){
-//     message.headers = {
-//       "X-Elapi-key":    apiKey,
-//       "Content-Type":   "application/json",
-//       "Content-Length": body.length
-//     };
-//     message.body = body;
-//   }
-
-//   console.log(" message: ", message);
-//   const request = new XMLHttpRequest();
-//   request.open('PUT', serverURL + 'send');
-//   request.setRequestHeader("Content-type", "application/json");
-//   request.send(JSON.stringify(message));
-//   vm.request = message.method + " " + vm.scheme + "://" +message.hostname + message.path;
-
-//   // REQUESTをLOGに追加
-//   const packet_id = 'packet-' + packetId++;
-//   const pkt = {
-//     id:packet_id,
-//     timeStamp:timeStamp(),
-//     direction:"REQ",
-//     data:message
-//   }
-//   console.log(" pkt:", pkt);
-//   dataLogArray.push(pkt);
-//   displayLog();
-// }
-
-
