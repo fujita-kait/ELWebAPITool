@@ -1,6 +1,10 @@
 // elwebapitool.js for elwebapitool(client side)
-// 2020.07.18
+// 2020.08.04
 // Created by Hiroyuki Fujita
+// 
+// elwebapitool.jsは、ECHONET Lite WebAPI Toolのクライアント側JavaScript codeである。
+// サーバーはlocalhost/elwebapitool
+// サーバー側にECHONET Lite WebAPI Serverの設定がファイルconfig.jsonとして存在する。
 'use strict';
 
 const g_serverURL = "/elwebapitool/";
@@ -13,6 +17,85 @@ let g_deviceInfo ={};
   //   "propertyListWritable":[<resourceName>]
   //   "actionList":[<resourceName>]}}
 let g_idList =[]; // [<deviceId>]
+let g_active_device_id = 0;
+
+
+let bind_data = {
+  // data in config.json
+  scheme: "",
+  // schemeSelected: "https",
+  schemeList: ["https", "http"],
+  elApiServer: "",
+  apiKey: "",
+  prefix: "",
+  idInfoList: [], // [{deviceType:"aircon", id:"0123"}, {deviceType:"battery", id:"1234"}], GET /devices のレスポンスを配列に
+
+  // input or control on GUI
+  methodList: ["GET", "PUT", "POST", "DELETE"],
+  methodSelected: "GET",
+  serviceList: [""], // [/devices, /groups]
+  serviceSelected: "",
+  idList: [], // [/<deviceId1>, /<deviceId2>,...]
+  idSelected: "",
+  deviceType: "",
+  resourceTypeList: [], // [/properties, /actons]
+  resourceTypeSelected: "",
+  resourceNameList: [], // [/airFlowLevel, /roomTemperature,...]
+  resourceNameSelected:"",
+  query: "",
+  body: "",
+  request: "request",
+  statusCode: "status code",
+  response: "response",
+  rbOrder: "normalOrder",
+
+  message_list: [],
+
+  // setting
+  addDevice: "",
+  addDeviceList: [
+    "",
+    "homeAirConditioner", 
+    "instantaneousWaterHeater", 
+    "fuelCell", 
+    "storageBattery", 
+    "evChargerDischarger", 
+    "lvSmartElectricEnergyMeter", 
+    "hvSmartElectricEnergyMeter", 
+    "generalLighting", 
+    "evCharger", 
+    "enhancedLightingSystem", 
+    "controller", 
+    "ventilationFan", 
+    "airCleaner", 
+    "commercialAirConditionerIndoorUnit", 
+    "commercialAirConditionerOutdoorUnit", 
+    "electricRainDoor", 
+    "electricWaterHeater", 
+    "electricLock", 
+    "bathroomHeaterDryer", 
+    "pvPowerGeneration", 
+    "floorHeater", 
+    "monoFunctionalLighting", 
+    "refrigerator", 
+    "cookingHeater", 
+    "riceCooker", 
+    "commercialShowcase", 
+    "commercialShowcaseOutdoorUnit", 
+    "switch", 
+    "hybridWaterHeater", 
+    "washerDryer"
+  ],
+  
+  // CSS
+  methodStyle: {color: 'black'},
+  serviceStyle: {color: 'black'},
+  idStyle: {color: 'black'},
+  resourceTypeStyle: {color: 'black'},
+  resourceNameStyle: {color: 'black'},
+  queryStyle: {color: 'black'},
+  bodyStyle: {color: 'black'},
+};
 
 // 起動時の処理
 // GET /v1/devices を実行し、g_idListを作成する
@@ -153,47 +236,51 @@ const template_home = {
   }
 };
 
-let bind_data = {
-  // data from config.json
-  scheme: "",
-  elApiServer: "",
-  apiKey: "",
-  prefix: "",
 
-  // input or control on GUI
-  methodList: ["GET", "PUT", "POST", "DELETE"],
-  methodSelected: "GET",
-  serviceList: [""], // [/devices, /groups]
-  serviceSelected: "",
-  idList: [], // [/<deviceId1>, /<deviceId2>,...]
-  idSelected: "",
-  deviceType: "",
-  resourceTypeList: [], // [/properties, /actons]
-  resourceTypeSelected: "",
-  resourceNameList: [], // [/airFlowLevel, /roomTemperature,...]
-  resourceNameSelected:"",
-  query: "",
-  body: "",
-  request: "request",
-  statusCode: "status code",
-  response: "response",
-  rbOrder: "normalOrder",
-
-  message_list: [],
-  
-  // CSS
-  methodStyle: {color: 'black'},
-  serviceStyle: {color: 'black'},
-  idStyle: {color: 'black'},
-  resourceTypeStyle: {color: 'black'},
-  resourceNameStyle: {color: 'black'},
-  queryStyle: {color: 'black'},
-  bodyStyle: {color: 'black'},
+// component:template_settingの定義
+const template_setting = {
+  template: '#tmpl-page-setting',
+  data:() => {return (bind_data);},
+  methods:{
+    // 設定保存ボタンがクリックされたときの処理
+    saveSettingsButtonIsClicked: function () {
+      const configData = {scheme:this.scheme, elApiServer:this.elApiServer, prefix:this.prefix, apiKey:this.apiKey};
+      console.log("saveSettingsButtonIsClicked", configData);
+      saveConfig(configData);
+    },
+    // デバイス追加ボタン(Trash can)がクリックされたときの処理
+    deleteDeviceButtonIsClicked: function (value) {
+      const deviceId = vm.idInfoList[value].id;
+      console.log("deleteDeviceButtonIsClicked is clicked, value=", deviceId);
+      accessElServerDeleteDevice(this.scheme, this.elApiServer, this.apiKey, this.prefix, deviceId);
+    },
+    // デバイス追加ボタンがクリックされたときの処理
+    addDeviceButtonIsClicked: function () {
+      console.log("addDeviceButtonIsClicked is clicked", vm.addDevice);
+      accessElServerAddDevice(this.scheme, this.elApiServer, this.apiKey, this.prefix, vm.addDevice);
+    },
+    // UPDATEボタンがクリックされたときの処理
+    updateButtonIsClicked: function () {
+      console.log("updateButtonIsClicked is clicked");
+      accessElServer(this.scheme, this.elApiServer, this.apiKey, 
+        this.methodSelected, this.prefix, "/devices", "", "", "", "", "");
+      }
+  },
+  // EL WebAPI serverにアクセス（/devices)して、デバイス情報を取得
+  created:function(){
+    console.log('Setting page is created');
+    accessElServer(this.scheme, this.elApiServer, this.apiKey, 
+      this.methodSelected, this.prefix, "/devices", "", "", "", "", "");
+  }
 };
 
-// routeとcomponentの定義
-const template_setting = {template: '#tmpl-page-setting',data:() => {return (bind_data);}};
-const template_help =    {template: '#tmpl-page-help',data:() => {return (bind_data);}};
+// component:template_helpの定義
+const template_help = {
+  template: '#tmpl-page-help',
+  data:() => {return (bind_data);}
+};
+
+// routeの定義
 const router = new VueRouter({
 	routes : [
 		{path:'/',        component:template_home},
@@ -248,6 +335,52 @@ function accessElServer(scheme, elApiServer, apiKey, methodSelected, prefix, ser
   return message;
 }
 
+// ECHONET Lite WebApi serverにアクセスして、実験クラウド専用のAPIで機器を削除する
+function accessElServerDeleteDevice(scheme, elApiServer, apiKey, prefix, deviceId) {
+  console.log("accessElServerDeleteDevice: Delete ", deviceId)
+  let path = prefix + "/config/device/" + deviceId;
+  const bodyData = "";
+  let message = {
+    hostname: elApiServer,
+    method:   "DELETE", 
+    path:     path,
+    headers:  {
+      "X-Elapi-key":    apiKey,
+      "Content-Type":   "application/json",
+      "Content-Length": bodyData.length
+    },
+    body:     bodyData
+  };
+
+  const request = new XMLHttpRequest();
+  request.open('PUT', g_serverURL + 'send');
+  request.setRequestHeader("Content-type", "application/json");
+  request.send(JSON.stringify(message));
+}
+
+// ECHONET Lite WebApi serverにアクセスして、実験クラウド専用のAPIで機器を追加する
+function accessElServerAddDevice(scheme, elApiServer, apiKey, prefix, deviceType) {
+  console.log("accessElServerAddDevice: Add ", deviceType)
+  let path = prefix + "/config/device/";
+  const bodyData = '{"deviceType":"' + deviceType + '"}';
+  let message = {
+    hostname: elApiServer,
+    method:   "POST", 
+    path:     path,
+    headers:  {
+      "X-Elapi-key":    apiKey,
+      "Content-Type":   "application/json",
+      "Content-Length": bodyData.length
+    },
+    body:     bodyData
+  };
+
+  const request = new XMLHttpRequest();
+  request.open('PUT', g_serverURL + 'send');
+  request.setRequestHeader("Content-type", "application/json");
+  request.send(JSON.stringify(message));
+}
+
 function clearLog() {
   g_packetId = 0;
   g_dataLogArray.length = 0;
@@ -276,6 +409,16 @@ function saveLog() {
   request.send(JSON.stringify(message));
 }
 
+// config保存をサーバーに依頼
+function saveConfig(configData) {
+  const message = {config:configData};
+  console.log("saveConfig: message", message)
+  const request = new XMLHttpRequest();
+  request.open('PUT', g_serverURL + 'config');
+  request.setRequestHeader("Content-type", "application/json");
+  request.send(JSON.stringify(message));
+}
+
 function updateResourceName(methodSelected, idSelected, resourceTypeSelected) {
   let resourceNameList = [];
   if (resourceTypeSelected !== "") {
@@ -298,7 +441,7 @@ function updateResourceName(methodSelected, idSelected, resourceTypeSelected) {
   vm.resourceNameList = resourceNameList;
 }
 
-
+// Vueのインスタンス作成
 let vm = new Vue({
   el: '#app',
   data: bind_data,
@@ -306,13 +449,14 @@ let vm = new Vue({
 });
 
 // connect websocket
-console.log('ws://' + document.location.host);
+console.log('Request WebScoket connection, ws://' + document.location.host);
 let ws = new WebSocket('ws://' + document.location.host);
 ws.onopen = function(event){
-  console.log("WebSocket: connected");    
+  console.log(" WebSocket: connected");
 };
 
-// server側のconfig.jsonのデータをリクエストする。その値をvmに設定する。
+// server側のファイルconfig.jsonのデータをリクエストする。その値をvmに設定する。
+// apiKeyがblankの場合、ダイアログを表示してapiKeyを入力させる。
 // XHR 非同期処理
 function reqListener() {
   console.log("config.json!:", this.responseText);
@@ -322,6 +466,9 @@ function reqListener() {
   vm.elApiServer = config.elApiServer;
   vm.apiKey = config.apiKey;
   vm.prefix = config.prefix;
+  if (config.apiKey == "") {
+    window.alert("Api Keyが設定されていません。設定画面で入力してください。");
+  }
 }
 let oReq = new XMLHttpRequest();
 oReq.addEventListener("load", reqListener);
@@ -333,8 +480,8 @@ oReq.send();
 // そのレスポンスをブラウザーにwebsocketでPUSH通信する。
 ws.onmessage = function(event){
   const obj = JSON.parse(event.data);
-  console.log("Web socketの受信:");
-  console.log(" REQ: " + obj.method + " https://" + obj.hostname,obj.path );
+  console.log("Web socketの受信:", obj);
+  console.log(" REQ: " + obj.method + " https://" + obj.hostname + "/",obj.path );
   // console.log(" hostname:", obj.hostname);
   console.log(" path:", obj.path);
   // console.log(" method:", obj.method);
@@ -364,17 +511,33 @@ ws.onmessage = function(event){
   }
 
   // GET /elapi/v1/devices
-  // g_idListを新規に作成する 
+  // g_idList, idInfoListを新規に作成する 
   regex = /\/devices$/;   // 正規表現：行末が'/devices'
   if (regex.test(obj.path)) {
     // deviceDescriptions = {};  // id listを新規で取得したので、deviceDescriptionsを初期化する
     g_idList = [""];
+    vm.idInfoList = [];
     if (obj.response.devices !== undefined) {
       for (let device of obj.response.devices) {
         g_idList.push("/" + device.id);
+        vm.idInfoList.push(device);
       }
     }
+
+    vm.idInfoList.sort(function(a, b) {
+      var nameA = a.deviceType.toUpperCase(); // 大文字と小文字を無視する
+      var nameB = b.deviceType.toUpperCase(); // 大文字と小文字を無視する
+      if (nameA < nameB) {
+        return -1;
+      }
+      if (nameA > nameB) {
+        return 1;
+      }
+      return 0;
+    });
+
     console.log("idListの更新:", g_idList);
+    console.log("idInfoListの更新:", vm.idInfoList);
     vm.idList = g_idList.sort();
     // 入力フィールドidの表示項目の更新
     vm.idSelected = (g_idList[1]) ? g_idList[1] : "";
@@ -491,4 +654,24 @@ function timeStamp() {
   minute = (minute.length == 1) ? ("0" + minute) : minute;
   second = (second.length == 1) ? ("0" + second) : second;
   return hour + ":" + minute + ":" + second;
+}
+
+function deleteDevice(event){
+	// if (this.g_active_device_id) {
+	// 	$('#' + this.g_active_device_id).removeClass('active');
+	// 	this.g_active_device_id = '';
+	// }
+	console.log("event: ",event);
+	let t = event.target;
+	console.log("t: ",t);
+	// console.log("t.id: ",t.id);
+  //   $('#' + t.id).addClass('active');
+	// this.g_active_device_id = t.id;
+
+	// 現在選択中のパケット ID
+	// let id_parts = this.g_active_device_id.split('-');
+	// let pno = parseInt(id_parts[1], 10);
+	
+    // packetの解析結果の表示
+	// vm.packetDetail = analyzeData(dataLogArray[pno].data);
 }

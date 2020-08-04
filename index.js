@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 // index.js for ELWebAPITool
-// 2020.07.16
+// 2020.08.04
 // access http://localhost:3010/elwebapitool
 // Created by Hiroyuki Fujita
 'use strict';
@@ -71,10 +71,10 @@ app.get('/elwebapitool/config', function(req, res){
 });
 
 // PUT /elwebapitool/config
-// request config.json data update
+// update config.json data
 app.put('/elwebapitool/config', function(req, res){
-  console.log("\nREST: PUT /elwebapitool/config");
-  updateConfig(req.body.config);
+  console.log("\nREST: PUT /elwebapitool/config\n", req.body.config);
+  updateConfig(JSON.stringify(req.body.config));
   res.send("Got a PUT request at /elwebapitool/config");
 });
 
@@ -105,12 +105,12 @@ wss.on("connection", ws => {
 });
 
 // config.jsonのupdate
-function updateConfig(newConfig){ // newConfig:config.json用のデータ
+function updateConfig(data){ // data:config.json用のデータ
   // writeFile config.json
-  const buffer = new Buffer(data);
+  const buffer = Buffer.from(data);
   fs.writeFile("config.json", buffer, (err) => {
     if (err) console.log("Error: Can not save config.json.");
-    console.log('config.json has been saved!');
+    console.log('\nconfig.json has been saved!');
   });
 }
 
@@ -138,7 +138,8 @@ function sendRequest(hostname, path, method, headers, body) {
     });
     res.on('end', () => {
       console.log(" response:",resStr);
-      let data = JSON.parse(resStr);        // JSONをobjectに変換
+      const data = (resStr == "") ? {} : JSON.parse(resStr);
+
       // websocket: push to client(web browser)
       wss.clients.forEach((client) => {
         client.send(JSON.stringify({"hostname":hostname, "path":path, "method":method, "statusCode":res.statusCode, "response":data}), (error) => {

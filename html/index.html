@@ -1,5 +1,5 @@
 <!-- index.html for elwebapitool-->
-<!-- 2020.07.16 -->
+<!-- 2020.08.04 -->
 
 <!doctype html>
 <html lang="ja">
@@ -69,6 +69,32 @@
     #message-list li span.col2 {
       width: 3em;
     }
+    #setting-devices-body {
+      margin: 0;
+      padding: 0;
+    }
+    #setting-devices-list-wrapper {
+      height: 30em;
+      overflow-y: scroll;
+    }
+    #setting-devices-list li {
+      font-family: Consolas, 'Courier New', Courier, Monaco, monospace;
+      font-size: 90%;
+      padding: 0.2em 1em;
+      cursor: pointer;
+    }
+    #setting-devices-list li span {
+      display: inline-block;
+    }
+    #setting-devices-list li span.col1 {
+      width: 20em;
+    }
+    #setting-devices-list li span.col2 {
+      width: 30em;
+    }
+    #setting-devices-list li span.col3 {
+      width: 4em;
+    }
   </style>
 </head>
 
@@ -107,7 +133,7 @@
 		</main>
   </div>
 
-  <!-- Template -->
+  <!-- Template for Home page-->
   <script type="text/x-template" id="tmpl-page-home">
     <div>
       <!-- input data -->
@@ -271,12 +297,139 @@
     </div>  
   </script>
 
+  <!-- Template for Setting page-->
   <script type="text/x-template" id="tmpl-page-setting">
-    <div>Contents for Setting</div>
+    <div>
+      <!-- input data -->
+      <div class="card mb-3">
+        <!-- input data header -->
+        <div class="card-header py-1">
+          <div class="row">
+            <div class="col-auto h5 mt-2">ECHONET Lite WebAPI Server の設定</div>
+            <div class="col"></div>
+            <div class="col-auto mt-2"> {{scheme}}://{{elApiServer}}{{prefix}}</div>
+            <div class="col-auto"></div>
+            <!-- 設定保存ボタン -->
+            <div class="col-auto mt-1 pl-0">
+              <button type="button" class="btn btn-secondary btn-sm" v-on:click="saveSettingsButtonIsClicked">設定保存</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- input data body -->
+        <div class="card-body pt-2 pb-2">
+          <form>
+            <div class="form-row">
+              <div class="input-group mb-2 mx-1">
+                <div class="input-group-prepend">
+                  <div class="input-group-text">Scheme</div>
+                </div>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input ml-3" type="radio" id="https" value="https" v-model="scheme">
+                  <label class="form-check-label" for="https">https</label>
+                </div>
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" id="http" value="http" v-model="scheme">
+                  <label class="form-check-label" for="http">http</label>
+                </div>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="input-group mb-2 mx-1">
+                <div class="input-group-prepend">
+                  <div class="input-group-text">Server name</div>
+                </div>
+                <input type="text" class="form-control" id="inputElApiServer" v-model="elApiServer">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="input-group mb-2 mx-1">
+                <div class="input-group-prepend">
+                  <div class="input-group-text">Prefix</div>
+                </div>
+                <input type="text" class="form-control" id="inputPrefix" v-model="prefix">
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="input-group mb-2 mx-1">
+                <div class="input-group-prepend">
+                  <div class="input-group-text">API key</div>
+                </div>
+                <input type="text" class="form-control" id="inputApiKey" v-model="apiKey">
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- Devices on the server -->
+      <div class="card">
+        <!-- header-->
+        <div class="card-header py-1">
+          <form>
+            <div class="form-row">
+              <div class="col-auto h5 mt-2">デバイスエミュレーションの設定</div>
+              <div class="col"></div>
+              <div class="col-auto">
+                <select id="selectAddDevice" class="form-control" v-model="addDevice">
+                  <option v-for="device in addDeviceList">{{ device }}</option>
+                </select>  
+              </div>
+              <!-- デバイス追加ボタン -->
+              <div class="col-auto mt-1 pl-0">
+                <button type="button" class="btn btn-secondary btn-sm" v-on:click="addDeviceButtonIsClicked" >デバイス追加</button>
+              </div>            
+              <!-- UPDATEボタン -->
+              <div class="col-auto mt-1 pl-0">
+                <button type="button" class="btn btn-secondary btn-sm" v-on:click="updateButtonIsClicked" >UPDATE</button>
+              </div>            
+            </div>
+          </form>
+        </div>
+
+        <!-- body -->
+        <div class="card-body" id="setting-devices-body">
+          <div id="setting-devices-list-wrapper">
+            <ul class="list-group" id="setting-devices-list">
+              <li class="list-group-item d-flex align-items-start" id="devices-header" tabindex="0">
+                <span class="col1">Device Type</span>
+                <span class="col2">Device Id</span>
+                <span class="col3">削除</span>
+              </li>
+              <li v-for="(idInfo, index) in idInfoList" class="list-group-item d-flex align-items-start" v-bind:id="idInfo.id" tabindex="0">
+                <span class="col1">{{ idInfo.deviceType }}</span>
+                <span class="col2">{{ idInfo.id }}</span>
+                <span class="col3">
+                  <button class="btn btn-secondary btn-sm" type="button" v-on:click="deleteDeviceButtonIsClicked(index)">
+                    <i class="far fa-trash-alt"></i>
+                  </button>
+                </span>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+    </div>  
   </script>
 
+  <!-- Template for Help page-->
   <script type="text/x-template" id="tmpl-page-help">
-    <div>Contents for Help</div>
+    <div>
+      <h4>ECHONET Lite WebAPI Toolについて</h4>
+      <p>この Tool は、エコーネットコンソーシアムが策定した
+        <a href=https://echonet.jp/web_api/#guideline target="_blank" rel="noreferrer">ECHONET Lite WebAPI</a>
+        の仕様を理解するためのツールです。<br>
+        エコーネットコンソーシアムが会員向けに運用している実験サーバーへのアクセスを想定しています。<br>
+        実験サーバーについては
+        <a href=https://echonet.jp/m_only/web_api_cloud/ target="_blank" rel="noreferrer">こちらの会員限定ページ</a>を参照ください。
+
+      <h4>apiKeyについて</h4>
+      <p>このツールを使って実験サーバーにアクセスするには、あらかじめユーザー登録を行い、apiKeyの取得が必要です。<br>
+      ユーザー登録は、上記の会員限定ページから行うことができます。<br>
+      この Tool の設定画面でapiKeyを入力したのち、設定保存ボタンをクリックしてください。
+      </p>
+    </div>
   </script>
 
 
