@@ -1,5 +1,5 @@
 // elwebapitool.js for elwebapitool(client side)
-// 2020.08.04
+// 2020.08.07
 // Created by Hiroyuki Fujita
 // 
 // elwebapitool.jsは、ECHONET Lite WebAPI Toolのクライアント側JavaScript codeである。
@@ -8,23 +8,19 @@
 'use strict';
 
 const g_serverURL = "/elwebapitool/";
-let g_packetId = 0;
-let g_dataLogArray = [];
-let g_deviceInfo ={}; 
+let g_packetId = 0; // logの中の packet id
+let g_dataLogArray = []; // logを格納するarray
+let g_deviceInfo ={}; // deviceIdをkeyとして、以下の項目を保持
   // {<deviceId>:{
   //   "deviceType":<deviceType>, 
   //   "propertyList":[<resourceName>], 
   //   "propertyListWritable":[<resourceName>]
   //   "actionList":[<resourceName>]}}
-let g_idList =[]; // [<deviceId>]
-let g_active_device_id = 0;
-
+let g_idList =[]; // deviceIdの配列　[<deviceId>]
 
 let bind_data = {
   // data in config.json
   scheme: "",
-  // schemeSelected: "https",
-  schemeList: ["https", "http"],
   elApiServer: "",
   apiKey: "",
   prefix: "",
@@ -47,13 +43,13 @@ let bind_data = {
   request: "request",
   statusCode: "status code",
   response: "response",
-  rbOrder: "normalOrder",
+  rbOrder: "normalOrder", // "normalOrder" or "reverseOrder"
 
   message_list: [],
 
-  // setting
-  addDevice: "",
-  addDeviceList: [
+  // Setting page
+  addDevice: "", // デバイス追加で選択されたデバイス名
+  addDeviceList: [  // デバイス追加に表示するデバイス名のリスト
     "",
     "homeAirConditioner", 
     "instantaneousWaterHeater", 
@@ -248,7 +244,7 @@ const template_setting = {
       console.log("saveSettingsButtonIsClicked", configData);
       saveConfig(configData);
     },
-    // デバイス追加ボタン(Trash can)がクリックされたときの処理
+    // デバイス削除ボタン(Trash can)がクリックされたときの処理
     deleteDeviceButtonIsClicked: function (value) {
       const deviceId = vm.idInfoList[value].id;
       console.log("deleteDeviceButtonIsClicked is clicked, value=", deviceId);
@@ -266,7 +262,8 @@ const template_setting = {
         this.methodSelected, this.prefix, "/devices", "", "", "", "", "");
       }
   },
-  // EL WebAPI serverにアクセス（/devices)して、デバイス情報を取得
+  // Setting pageを表示する時に呼ばれるfunction
+  // EL WebAPI serverにアクセス（GET /devices)して、デバイス情報を取得
   created:function(){
     console.log('Setting page is created');
     accessElServer(this.scheme, this.elApiServer, this.apiKey, 
@@ -280,7 +277,7 @@ const template_help = {
   data:() => {return (bind_data);}
 };
 
-// routeの定義
+// routerの定義
 const router = new VueRouter({
 	routes : [
 		{path:'/',        component:template_home},
@@ -461,7 +458,6 @@ ws.onopen = function(event){
 function reqListener() {
   console.log("config.json!:", this.responseText);
   const config = JSON.parse(this.responseText);
-  // window.localStorage.setItem('config', this.responseText);
   vm.scheme = config.scheme;
   vm.elApiServer = config.elApiServer;
   vm.apiKey = config.apiKey;
@@ -470,10 +466,10 @@ function reqListener() {
     window.alert("Api Keyが設定されていません。設定画面で入力してください。");
   }
 }
-let oReq = new XMLHttpRequest();
-oReq.addEventListener("load", reqListener);
-oReq.open('GET', g_serverURL + 'config');
-oReq.send();
+const request = new XMLHttpRequest();
+request.addEventListener("load", reqListener);
+request.open('GET', g_serverURL + 'config');
+request.send();
 
 // websocket:受信処理
 // index.js内のwebserverがECHONET Lite WebApi serverにRESTでアクセスし、
@@ -654,24 +650,4 @@ function timeStamp() {
   minute = (minute.length == 1) ? ("0" + minute) : minute;
   second = (second.length == 1) ? ("0" + second) : second;
   return hour + ":" + minute + ":" + second;
-}
-
-function deleteDevice(event){
-	// if (this.g_active_device_id) {
-	// 	$('#' + this.g_active_device_id).removeClass('active');
-	// 	this.g_active_device_id = '';
-	// }
-	console.log("event: ",event);
-	let t = event.target;
-	console.log("t: ",t);
-	// console.log("t.id: ",t.id);
-  //   $('#' + t.id).addClass('active');
-	// this.g_active_device_id = t.id;
-
-	// 現在選択中のパケット ID
-	// let id_parts = this.g_active_device_id.split('-');
-	// let pno = parseInt(id_parts[1], 10);
-	
-    // packetの解析結果の表示
-	// vm.packetDetail = analyzeData(dataLogArray[pno].data);
 }

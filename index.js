@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 
 // index.js for ELWebAPITool
-// 2020.08.04
+// 2020.08.07
 // access http://localhost:3010/elwebapitool
 // Created by Hiroyuki Fujita
 'use strict';
 
-const VERSION = "2019.07.16";
+const VERSION = "2019.08.07";
 const portNumber = 3010;
 
 let express = require('express');
@@ -28,12 +28,12 @@ fs.readFile('config.json', 'utf8', (err, data) => {
 
 // create a folder "log" to save log files, if it doesn't exist
 fs.readdir('.', function(err, files){
-    if (err) throw err;
-    if (files.includes('log') == false) {
-        fs.mkdir('log', (err) => {
-          if (err) console.log("Error: mkdir");
-        });
-    }
+  if (err) throw err;
+  if (files.includes('log') == false) {
+    fs.mkdir('log', (err) => {
+      if (err) console.log("Error: mkdir log");
+    });
+  }
 });
 
 // web serverの起動
@@ -104,9 +104,8 @@ wss.on("connection", ws => {
   });
 });
 
-// config.jsonのupdate
-function updateConfig(data){ // data:config.json用のデータ
-  // writeFile config.json
+// config.jsonのupdate (writeFile config.json)
+function updateConfig(data){ // data:string, config.json用のデータ
   const buffer = Buffer.from(data);
   fs.writeFile("config.json", buffer, (err) => {
     if (err) console.log("Error: Can not save config.json.");
@@ -115,7 +114,8 @@ function updateConfig(data){ // data:config.json用のデータ
 }
 
 // ECHONET Lite webApi serverへのREST送信
-function sendRequest(hostname, path, method, headers, body) {
+function sendRequest(hostname, path, method, headers, body) { 
+  // hostname:string, path:string, method:string, headers:object, body:
   console.log("", method, hostname, path);
   console.log(" headers:", headers);
   if (body != ""){
@@ -129,20 +129,31 @@ function sendRequest(hostname, path, method, headers, body) {
     headers: headers    // { "X-Elapi-key" : "8cef65ec5f3c85bd8179ee9d1075fe413bbb6a2ad440d27b0be57cc03035471a" }
   };
   
+  // https requestの作成と、call backの定義。
+  // call backはresponseが複数回の場合も考慮してresStrを作成する。
+  // responseが終了(end)したら、websocketで通知する。
   const req = https.request(options, (res) => {
     console.log(' response statusCode:', res.statusCode);
     let resStr = '';
+
     res.on('data', (d) => {
-      let str = d.toString('utf8'); // response(d)はbuffer dataなので、string(JSON)に変換
-      resStr += str;  // 複数回のresponseに対応
+      // response(d)はbuffer dataなので、string(JSON)に変換
+      // 複数回のresponseに対応
+      resStr += d.toString('utf8');
     });
     res.on('end', () => {
       console.log(" response:",resStr);
       const data = (resStr == "") ? {} : JSON.parse(resStr);
-
+      const message = JSON.stringify({
+        "hostname":hostname,
+        "path":path,
+        "method":method,
+        "statusCode":res.statusCode,
+        "response":data
+      })
       // websocket: push to client(web browser)
       wss.clients.forEach((client) => {
-        client.send(JSON.stringify({"hostname":hostname, "path":path, "method":method, "statusCode":res.statusCode, "response":data}), (error) => {
+        client.send(message, (error) => {
           if(error) {
             console.log('Failed to send a message on the WebSocket channel.', error);
           }
@@ -162,7 +173,8 @@ function sendRequest(hostname, path, method, headers, body) {
   req.end();
 }
 
-function saveLog(data) {  // string:data
+// logの保存。file nameはtimestampを利用する
+function saveLog(data) {  // data:string
   const date = new Date();
   let year = date.getFullYear();
   let month = (date.getMonth()+1).toString();
