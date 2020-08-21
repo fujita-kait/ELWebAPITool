@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 
 // index.js for ELWebAPITool
-// 2020.08.07
+// 2020.08.21
 // access http://localhost:3010/elwebapitool
-// Created by Hiroyuki Fujita
+// Hiroyuki Fujita
 'use strict';
 
-const VERSION = "2019.08.07";
+const VERSION = "2019.08.21";
 const portNumber = 3010;
 
 let express = require('express');

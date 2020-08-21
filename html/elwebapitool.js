@@ -1,5 +1,5 @@
 // elwebapitool.js for elwebapitool(client side)
-// 2020.08.07
+// 2020.08.21
 // Created by Hiroyuki Fujita
 // 
 // elwebapitool.jsは、ECHONET Lite WebAPI Toolのクライアント側JavaScript codeである。
@@ -8,7 +8,6 @@
 'use strict';
 
 const g_serverURL = "/elwebapitool/";
-let g_packetId = 0; // logの中の packet id
 let g_dataLogArray = []; // logを格納するarray
 let g_deviceInfo ={}; // deviceIdをkeyとして、以下の項目を保持
   // {<deviceId>:{
@@ -16,7 +15,6 @@ let g_deviceInfo ={}; // deviceIdをkeyとして、以下の項目を保持
   //   "propertyList":[<resourceName>], 
   //   "propertyListWritable":[<resourceName>]
   //   "actionList":[<resourceName>]}}
-let g_idList =[]; // deviceIdの配列　[<deviceId>]
 
 let bind_data = {
   // data in config.json
@@ -93,12 +91,6 @@ let bind_data = {
   bodyStyle: {color: 'black'},
 };
 
-// 起動時の処理
-// GET /v1/devices を実行し、g_idListを作成する
-// window.onload = (event) => {
-//   accessElServer(vm.scheme, vm.elApiServer, vm.apiKey, "GET", vm.prefix, "/devices", "", "", "", "", "")
-// };
-
 // component:template_homeの定義
 const template_home = {
   template:'#tmpl-page-home',
@@ -117,7 +109,6 @@ const template_home = {
     
       // REQUESTをLOGに追加
       g_dataLogArray.push({
-        id:'packet-' + g_packetId++,
         timeStamp:timeStamp(),
         direction:"REQ",
         data:message
@@ -161,7 +152,6 @@ const template_home = {
 
     // 入力フィールド service の値が変更された場合の処理
     // ""が選択されたら、入力フィールドのId, Resource Type, Resource Name, queryをブランクにする
-    // devicesが選択されたらg_idListを更新する
     serviceIsUpdated: function () {
       if (this.serviceSelected == "") {
         vm.idList = [""];
@@ -171,12 +161,11 @@ const template_home = {
         vm.resourceTypeSelected = "";
         vm.resourceNameSelected = "";
         vm.deviceType = "";
-      } else {
-        vm.idList = g_idList;
       }
     },
 
     // 入力フィールド id の値が変更された場合の処理
+    // vm.deviceTypeをvm.idInfoListを利用してupdateする
     // 選択されたidのdevice descriptionが存在する場合は、resourceTypeとresourceNameを更新する
     idIsUpdated: function () {
       const idSelected=this.idSelected;
@@ -187,9 +176,14 @@ const template_home = {
       vm.resourceNameSelected = "";
 
       const deviceId = idSelected.slice(1); // remove "/"
+      updateDeviceType(deviceId);
+      // for (const idInfo of vm.idInfoList) {
+      //   if (idInfo.id == deviceId) {
+      //     vm.deviceType = idInfo.deviceType;
+      //   }
+      // }
       const deviceInfo = g_deviceInfo[deviceId];
       if (deviceInfo !== undefined){
-        vm.deviceType = deviceInfo.deviceType;
         let resourceTypeList = [""];
         if (deviceInfo.propertyList !== undefined) {
           resourceTypeList.push("/properties");
@@ -232,6 +226,13 @@ const template_home = {
   }
 };
 
+function updateDeviceType(deviceId) {
+  for (const idInfo of vm.idInfoList) {
+    if (idInfo.id == deviceId) {
+      vm.deviceType = idInfo.deviceType;
+    }
+  }
+}
 
 // component:template_settingの定義
 const template_setting = {
@@ -267,7 +268,7 @@ const template_setting = {
   created:function(){
     console.log('Setting page is created');
     accessElServer(this.scheme, this.elApiServer, this.apiKey, 
-      this.methodSelected, this.prefix, "/devices", "", "", "", "", "");
+      "GET", this.prefix, "/devices", "", "", "", "", "");
   }
 };
 
@@ -379,12 +380,12 @@ function accessElServerAddDevice(scheme, elApiServer, apiKey, prefix, deviceType
 }
 
 function clearLog() {
-  g_packetId = 0;
   g_dataLogArray.length = 0;
   vm.message_list = [];
 }
 
 function saveLog() {
+  // g_dataLogArrayから保存用のstringの作成
   let log = "";
   for (let dataLog of g_dataLogArray) {
     if (dataLog.direction == "REQ") { // REQUESTの場合
@@ -478,9 +479,7 @@ ws.onmessage = function(event){
   const obj = JSON.parse(event.data);
   console.log("Web socketの受信:", obj);
   console.log(" REQ: " + obj.method + " https://" + obj.hostname + "/",obj.path );
-  // console.log(" hostname:", obj.hostname);
   console.log(" path:", obj.path);
-  // console.log(" method:", obj.method);
   console.log(" status code:", obj.statusCode);
   console.log(" response:", obj.response);
   vm.statusCode = "status code: " + obj.statusCode;
@@ -493,7 +492,6 @@ ws.onmessage = function(event){
   // serviceListを新規に作成する 
   regex = /\/v1$/;   // 正規表現：行末が'/v1'
   if (regex.test(obj.path)) {
-    // deviceDescriptions = {};  // service listを新規で取得したので、deviceDescriptionsを初期化する
     let serviceList = [""];
     if (obj.response.version !== undefined) {
       for (let service of obj.response.version) {
@@ -507,15 +505,14 @@ ws.onmessage = function(event){
   }
 
   // GET /elapi/v1/devices
-  // g_idList, idInfoListを新規に作成する 
+  // vm.idList, idInfoListを新規に作成する 
   regex = /\/devices$/;   // 正規表現：行末が'/devices'
   if (regex.test(obj.path)) {
-    // deviceDescriptions = {};  // id listを新規で取得したので、deviceDescriptionsを初期化する
-    g_idList = [""];
+    vm.idList = [""];
     vm.idInfoList = [];
     if (obj.response.devices !== undefined) {
       for (let device of obj.response.devices) {
-        g_idList.push("/" + device.id);
+        vm.idList.push("/" + device.id);
         vm.idInfoList.push(device);
       }
     }
@@ -532,11 +529,11 @@ ws.onmessage = function(event){
       return 0;
     });
 
-    console.log("idListの更新:", g_idList);
+    vm.idList.sort();
+    console.log("idListの更新:", vm.idList);
     console.log("idInfoListの更新:", vm.idInfoList);
-    vm.idList = g_idList.sort();
     // 入力フィールドidの表示項目の更新
-    vm.idSelected = (g_idList[1]) ? g_idList[1] : "";
+    vm.idSelected = (vm.idList[1]) ? vm.idList[1] : "";
   }
 
   // GET /elapi/v1/devices/<id>
@@ -545,7 +542,6 @@ ws.onmessage = function(event){
   // vm.resourceNameListにresource nameをpushする
   regex = /\/devices\/([0-9]|[a-z]|[A-Z])+$/; // 正規表現'/devices/'の後、行末まで英数字
   if (regex.test(obj.path)) {
-    // deviceDescriptionsにdeviceIdをkey, device descriptionをvalueとして追加
     const pathElements = obj.path.split('/');  // pathを'/'で分割して要素を配列にする
     const deviceId = pathElements[pathElements.length - 1];  // 配列の最後の要素が deviceId
     
@@ -605,14 +601,11 @@ ws.onmessage = function(event){
   }
   
   // RESPONSEをLOGに追加
-  const packet_id = 'packet-' + g_packetId++;
-  const pkt = {
-    id:packet_id,
+  g_dataLogArray.push({
     timeStamp:timeStamp(),
     direction:"RES",
     data:obj
-  }
-  g_dataLogArray.push(pkt);
+  });
   
   // LOG表示の更新
   displayLog();
