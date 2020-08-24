@@ -1,5 +1,5 @@
 // elwebapitool.js for elwebapitool(client side)
-// 2020.08.21
+// 2020.08.24
 // Created by Hiroyuki Fujita
 // 
 // elwebapitool.jsは、ECHONET Lite WebAPI Toolのクライアント側JavaScript codeである。
@@ -22,15 +22,15 @@ let bind_data = {
   elApiServer: "",
   apiKey: "",
   prefix: "",
-  idInfoList: [], // [{deviceType:"aircon", id:"0123"}, {deviceType:"battery", id:"1234"}], GET /devices のレスポンスを配列に
 
   // input or control on GUI
   methodList: ["GET", "PUT", "POST", "DELETE"],
   methodSelected: "GET",
   serviceList: [""], // [/devices, /groups]
   serviceSelected: "",
-  idList: [], // [/<deviceId1>, /<deviceId2>,...]
+  idInfoList: [], // [{deviceType:"/aircon", id:"0123"},... ] GET /devices のレスポンスを利用
   idSelected: "",
+  idToolTip: "XXX",
   deviceType: "",
   resourceTypeList: [], // [/properties, /actons]
   resourceTypeSelected: "",
@@ -123,6 +123,7 @@ const template_home = {
     methodIsUpdated: function () {
       // serviceとdevice idがblankでなく、device descriptionが存在する場合
       if ((this.serviceSelected !== "") && (this.idSelected !== "")) {
+        console.log("methodIsUpdated:idSelected", this.idSelected);
         const deviceId = this.idSelected.slice(1); // remove "/" from idSelected
         let resourceNameList = [""];
         if (g_deviceInfo[deviceId] !== undefined) {
@@ -144,7 +145,6 @@ const template_home = {
           }
           if (vm.resourceTypeSelected !== ""){
             vm.resourceNameList = resourceNameList;
-            vm.resourceNameSelected = "";
           }
         }
       }
@@ -154,7 +154,7 @@ const template_home = {
     // ""が選択されたら、入力フィールドのId, Resource Type, Resource Name, queryをブランクにする
     serviceIsUpdated: function () {
       if (this.serviceSelected == "") {
-        vm.idList = [""];
+        vm.idInfoList =[{}]
         vm.resourceTypeList = [""];
         vm.resourceNameList = [""];
         vm.idSelected = "";
@@ -168,20 +168,15 @@ const template_home = {
     // vm.deviceTypeをvm.idInfoListを利用してupdateする
     // 選択されたidのdevice descriptionが存在する場合は、resourceTypeとresourceNameを更新する
     idIsUpdated: function () {
-      const idSelected=this.idSelected;
+      console.log("idIsUpdated");
+      const deviceId = this.idSelected.slice(1); // remove "/"
       vm.resourceTypeList = [""];
       vm.resourceNameList = [""];
       vm.deviceType ="";
       vm.resourceTypeSelected = "";
       vm.resourceNameSelected = "";
 
-      const deviceId = idSelected.slice(1); // remove "/"
       updateDeviceType(deviceId);
-      // for (const idInfo of vm.idInfoList) {
-      //   if (idInfo.id == deviceId) {
-      //     vm.deviceType = idInfo.deviceType;
-      //   }
-      // }
       const deviceInfo = g_deviceInfo[deviceId];
       if (deviceInfo !== undefined){
         let resourceTypeList = [""];
@@ -193,7 +188,7 @@ const template_home = {
         }
         vm.resourceTypeList = resourceTypeList;
         vm.resourceTypeSelected = (resourceTypeList[1]) ? resourceTypeList[1] : "";
-        updateResourceName(vm.methodSelected, idSelected, vm.resourceTypeSelected);
+        updateResourceName(vm.methodSelected, deviceId, vm.resourceTypeSelected);
         vm.resourceNameSelected = (vm.resourceNameList[1]) ? vm.resourceNameList[1] : "";
       } 
     },
@@ -201,7 +196,7 @@ const template_home = {
     // 入力フィールド resourceType の値が変更された場合の処理
     //  resourceNameListをupdateする
     resourceTypeIsUpdated: function () {
-      updateResourceName(this.methodSelected, this.idSelected, this.resourceTypeSelected);
+      updateResourceName(this.methodSelected, this.idSelected.slice(1), this.resourceTypeSelected);
     },
 
     // 入力フィールド resourceName の値が変更された場合の処理
@@ -228,7 +223,7 @@ const template_home = {
 
 function updateDeviceType(deviceId) {
   for (const idInfo of vm.idInfoList) {
-    if (idInfo.id == deviceId) {
+    if (idInfo.id == ("/" + deviceId)) {
       vm.deviceType = idInfo.deviceType;
     }
   }
@@ -295,7 +290,7 @@ function accessElServer(scheme, elApiServer, apiKey, methodSelected, prefix, ser
   // pathの作成
   let path = prefix;
   if (serviceSelected !== "") {
-    path += serviceSelected;
+    path += (serviceSelected);
     if (idSelected !== "") {
       path += idSelected;
       if (resourceTypeSelected !== "") {
@@ -418,11 +413,10 @@ function saveConfig(configData) {
 }
 
 function updateResourceName(methodSelected, idSelected, resourceTypeSelected) {
+  console.log("updateResourceName ", methodSelected, idSelected, resourceTypeSelected)
   let resourceNameList = [];
   if (resourceTypeSelected !== "") {
-    const deviceId = idSelected.slice(1); // remove "/"
-    // const resourceType = resourceTypeSelected.slice(1); // remove "/"
-    const deviceInfo = g_deviceInfo[deviceId];
+    const deviceInfo = g_deviceInfo[idSelected];
     if (deviceInfo !== undefined) {
       if ((resourceTypeSelected == "/properties") && (methodSelected == "GET")) {
         resourceNameList = deviceInfo.propertyList;
@@ -433,10 +427,10 @@ function updateResourceName(methodSelected, idSelected, resourceTypeSelected) {
       if ((resourceTypeSelected == "/actions") && (methodSelected == "POST")) {
         resourceNameList = deviceInfo.actionList;
       }
+      vm.resourceNameList = resourceNameList;
       vm.resourceNameSelected = (resourceNameList[1]) ? resourceNameList[1] : "";   
     }
   }
-  vm.resourceNameList = resourceNameList;
 }
 
 // Vueのインスタンス作成
@@ -505,15 +499,14 @@ ws.onmessage = function(event){
   }
 
   // GET /elapi/v1/devices
-  // vm.idList, idInfoListを新規に作成する 
+  // vm.idInfoListを新規に作成する 
   regex = /\/devices$/;   // 正規表現：行末が'/devices'
   if (regex.test(obj.path)) {
-    vm.idList = [""];
-    vm.idInfoList = [];
+    vm.idInfoList = [{deviceType:"", id:""}];
     if (obj.response.devices !== undefined) {
       for (let device of obj.response.devices) {
-        vm.idList.push("/" + device.id);
-        vm.idInfoList.push(device);
+        const idInfo = { id:"/" + device.id, deviceType:device.deviceType };
+        vm.idInfoList.push(idInfo);
       }
     }
 
@@ -529,11 +522,10 @@ ws.onmessage = function(event){
       return 0;
     });
 
-    vm.idList.sort();
-    console.log("idListの更新:", vm.idList);
-    console.log("idInfoListの更新:", vm.idInfoList);
     // 入力フィールドidの表示項目の更新
-    vm.idSelected = (vm.idList[1]) ? vm.idList[1] : "";
+    vm.idSelected = (vm.idInfoList[1]) ? vm.idInfoList[1].id : "";
+    // Device Typeの表示項目の更新
+    updateDeviceType(vm.idSelected.slice(1));
   }
 
   // GET /elapi/v1/devices/<id>
@@ -593,7 +585,7 @@ ws.onmessage = function(event){
     vm.resourceTypeList = resourceTypeList;
     
     // 入力フィールドResouce TypeとResource Nameの表示項目の更新
-    updateResourceName("GET", "/"+deviceId, "/properties");
+    updateResourceName("GET", deviceId, "/properties");
     vm.resourceTypeSelected = (resourceTypeList[1]) ? resourceTypeList[1] : "";
 
     // 入力フィールドidの下のdeviceTypeの更新

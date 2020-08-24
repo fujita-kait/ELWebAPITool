@@ -1,5 +1,5 @@
 <!-- index.html for elwebapitool-->
-<!-- 2020.08.21 -->
+<!-- 2020.08.24 -->
 
 <!doctype html>
 <html lang="ja">
@@ -153,7 +153,7 @@
             </div>
             <div class="col-auto mt-1 pl-0">
               <!-- SENDボタン -->
-              <button type="button" class="btn btn-secondary btn-sm" v-on:click="sendButtonIsClicked" >SEND</button>
+              <button type="button" class="btn btn-secondary btn-sm" title="Send request" v-on:click="sendButtonIsClicked" >SEND</button>
             </div>
           </div>
         </div>
@@ -177,8 +177,9 @@
               </div>
               <div class="form-group col-md-2">
                 <label for="inputId">Id</label>
-                <select id="inputId" class="form-control" v-model="idSelected" v-on:change="idIsUpdated">
-                  <option v-for="id in idList">{{ id }}</option>
+                <select id="inputId" class="form-control" title="Id" v-model="idSelected" v-on:change="idIsUpdated" >
+                  <!-- <option v-for="id in idList" v-bind:title="idToolTip" >{{ id }}</option> -->
+                  <option v-for="idInfo in idInfoList" v-bind:title="idInfo.deviceType" >{{ idInfo.id }}</option>
                 </select>
               </div>
               <div class="form-group col-md-2">
@@ -437,8 +438,7 @@
   </script>
 
   <script src="/lib/jquery-3.3.1.min.js"></script>
-  <!-- <script src="/lib/popper.min.js"></script> -->
-  <script src="/lib/bootstrap/js/bootstrap.min.js"></script>
+  <script src="/lib/popper.min.js"></script>
   <script src="/lib/vue.min.js"></script>
   <script src="/lib/vue-router.min.js"></script>
   <script src="/elwebapitool.js"></script>
