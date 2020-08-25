@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 // index.js for ELWebAPITool
-// 2020.08.24
+// 2020.08.25
 // access http://localhost:3010/elwebapitool
 // Hiroyuki Fujita
 'use strict';

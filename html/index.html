@@ -1,5 +1,5 @@
 <!-- index.html for elwebapitool-->
-<!-- 2020.08.24 -->
+<!-- 2020.08.25 -->
 
 <!doctype html>
 <html lang="ja">
@@ -149,8 +149,7 @@
             <div class="col-auto h5 mt-2">Send Request</div>
             <div class="col"></div>
             <div class="col-auto mt-2"> {{scheme}}://{{elApiServer}}{{prefix}}</div>
-            <div class="col-auto">
-            </div>
+            <div class="col-auto"></div>
             <div class="col-auto mt-1 pl-0">
               <!-- SENDボタン -->
               <button type="button" class="btn btn-secondary btn-sm" title="Send request" v-on:click="sendButtonIsClicked" >SEND</button>
@@ -178,7 +177,6 @@
               <div class="form-group col-md-2">
                 <label for="inputId">Id</label>
                 <select id="inputId" class="form-control" title="Id" v-model="idSelected" v-on:change="idIsUpdated" >
-                  <!-- <option v-for="id in idList" v-bind:title="idToolTip" >{{ id }}</option> -->
                   <option v-for="idInfo in idInfoList" v-bind:title="idInfo.deviceType" >{{ idInfo.id }}</option>
                 </select>
               </div>
@@ -210,12 +208,20 @@
 
             <!-- 3rd row -->
             <div class="form-row">
-              <div class="input-group mb-2 mx-1">
-                <div class="input-group-prepend">
-                  <div class="input-group-text">Body data</div>
+              <div class="form-group col-md-10">
+                <div class="input-group mb-2 mx-1">
+                  <div class="input-group-prepend">
+                    <div class="input-group-text">Body data</div>
+                  </div>
+                  <input type="text" class="form-control" id="inputBody" v-model="body" v-bind:style="bodyStyle">
                 </div>
-                <input type="text" class="form-control" id="inputBody" v-model="body" v-bind:style="bodyStyle">
               </div>
+
+              <div class="col-auto"></div>
+              <div class="col-auto mt-1 pl-0">
+                <button type="button" class="btn btn-secondary btn-sm" title="Copy from Response" v-on:click="copyFromResponseButtonIsClicked">Copy from Response</button>
+              </div>
+    
             </div>
 
           </form>

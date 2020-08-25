@@ -1,5 +1,5 @@
 // elwebapitool.js for elwebapitool(client side)
-// 2020.08.24
+// 2020.08.25
 // Created by Hiroyuki Fujita
 // 
 // elwebapitool.jsは、ECHONET Lite WebAPI Toolのクライアント側JavaScript codeである。
@@ -9,12 +9,13 @@
 
 const g_serverURL = "/elwebapitool/";
 let g_dataLogArray = []; // logを格納するarray
-let g_deviceInfo ={}; // deviceIdをkeyとして、以下の項目を保持
+let g_deviceInfo = {}; // deviceIdをkeyとして、以下の項目を保持
   // {<deviceId>:{
   //   "deviceType":<deviceType>, 
   //   "propertyList":[<resourceName>], 
   //   "propertyListWritable":[<resourceName>]
   //   "actionList":[<resourceName>]}}
+let g_flagSendButtonIsClicked = false; // Request & ResponseとLOGに不要なデータを表示しないため
 
 let bind_data = {
   // data in config.json
@@ -23,7 +24,7 @@ let bind_data = {
   apiKey: "",
   prefix: "",
 
-  // input or control on GUI
+  // Home page, input and control
   methodList: ["GET", "PUT", "POST", "DELETE"],
   methodSelected: "GET",
   serviceList: [""], // [/devices, /groups]
@@ -38,11 +39,12 @@ let bind_data = {
   resourceNameSelected:"",
   query: "",
   body: "",
-  request: "request",
-  statusCode: "status code",
-  response: "response",
-  rbOrder: "normalOrder", // "normalOrder" or "reverseOrder"
 
+  // Home page, Request & Response, LOG
+  request: "request:",
+  statusCode: "response: status code",
+  response: "response: data",
+  rbOrder: "normalOrder", // "normalOrder" or "reverseOrder"
   message_list: [],
 
   // Setting page
@@ -99,13 +101,14 @@ const template_home = {
     // SENDボタンがクリックされたときの処理
     sendButtonIsClicked: function () {
       console.log("SENDボタンがクリックされました。");
+      g_flagSendButtonIsClicked = true;
       // ECHONET Lite WebApi serverにアクセスする
       const message = accessElServer(this.scheme, this.elApiServer, this.apiKey, 
         this.methodSelected, this.prefix, this.serviceSelected, this.idSelected, 
         this.resourceTypeSelected, this.resourceNameSelected, this.query, this.body);
 
       // REQUEST表示エリアのデータ設定
-      this.request = message.method + " " + this.scheme + "://" +message.hostname + message.path;
+      this.request = "REQ " + message.method + " " + this.scheme + "://" +message.hostname + message.path + " " + this.body;
     
       // REQUESTをLOGに追加
       g_dataLogArray.push({
@@ -116,6 +119,10 @@ const template_home = {
 
       // ログを表示
       displayLog();
+    },
+
+    copyFromResponseButtonIsClicked: function () {
+      this.body = JSON.stringify(vm.response);
     },
 
     // 入力フィールド Method の値が変更された場合の処理
@@ -129,6 +136,7 @@ const template_home = {
         if (g_deviceInfo[deviceId] !== undefined) {
           switch (this.methodSelected) {
             case "GET":
+              vm.body = "";
               resourceNameList = g_deviceInfo[deviceId].propertyList;
               vm.resourceTypeSelected = "/properties";
               break;
@@ -476,8 +484,23 @@ ws.onmessage = function(event){
   console.log(" path:", obj.path);
   console.log(" status code:", obj.statusCode);
   console.log(" response:", obj.response);
-  vm.statusCode = "status code: " + obj.statusCode;
-  vm.response = obj.response;
+
+  // SEND buttonによるrequestのresponseなら、Request & Response 及び LOG を表示
+  if (g_flagSendButtonIsClicked) {
+    // Request & Responseのupdate
+    vm.statusCode = "RES status code: " + obj.statusCode;
+    vm.response = obj.response;
+    // RESPONSEをLOGに追加
+    g_dataLogArray.push({
+      timeStamp:timeStamp(),
+      direction:"RES",
+      data:obj
+    });
+    
+    // LOG表示の更新
+    displayLog();
+  }
+  g_flagSendButtonIsClicked = false;
 
   // ECHONET Lite WebApi Serverからのresponse処理
   let regex; // obj.path でどのREQUESTのRESPONSEであるかを分岐する
@@ -592,15 +615,6 @@ ws.onmessage = function(event){
     vm.deviceType = obj.response.deviceType;
   }
   
-  // RESPONSEをLOGに追加
-  g_dataLogArray.push({
-    timeStamp:timeStamp(),
-    direction:"RES",
-    data:obj
-  });
-  
-  // LOG表示の更新
-  displayLog();
 };
 
 function displayLog() {
