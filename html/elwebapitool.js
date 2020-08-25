@@ -500,7 +500,6 @@ ws.onmessage = function(event){
     // LOG表示の更新
     displayLog();
   }
-  g_flagSendButtonIsClicked = false;
 
   // ECHONET Lite WebApi Serverからのresponse処理
   let regex; // obj.path でどのREQUESTのRESPONSEであるかを分岐する
@@ -545,10 +544,12 @@ ws.onmessage = function(event){
       return 0;
     });
 
-    // 入力フィールドidの表示項目の更新
-    vm.idSelected = (vm.idInfoList[1]) ? vm.idInfoList[1].id : "";
-    // Device Typeの表示項目の更新
-    updateDeviceType(vm.idSelected.slice(1));
+    if (g_flagSendButtonIsClicked) {
+      // 入力フィールドidの表示項目の更新
+      vm.idSelected = (vm.idInfoList[1]) ? vm.idInfoList[1].id : "";
+      // Device Typeの表示項目の更新
+      updateDeviceType(vm.idSelected.slice(1));
+    }
   }
 
   // GET /elapi/v1/devices/<id>
@@ -614,7 +615,7 @@ ws.onmessage = function(event){
     // 入力フィールドidの下のdeviceTypeの更新
     vm.deviceType = obj.response.deviceType;
   }
-  
+  g_flagSendButtonIsClicked = false;
 };
 
 function displayLog() {
