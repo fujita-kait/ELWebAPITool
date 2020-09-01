@@ -6,7 +6,7 @@
 // Hiroyuki Fujita
 'use strict';
 
-const VERSION = "2019.08.24";
+const VERSION = "2019.08.25";
 const portNumber = 3010;
 
 let express = require('express');
