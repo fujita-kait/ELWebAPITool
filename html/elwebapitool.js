@@ -1,5 +1,5 @@
 // elwebapitool.js for elwebapitool(client side)
-// 2020.08.25
+// 2020.09.11
 // Created by Hiroyuki Fujita
 // 
 // elwebapitool.jsは、ECHONET Lite WebAPI Toolのクライアント側JavaScript codeである。
@@ -8,14 +8,20 @@
 'use strict';
 
 const g_serverURL = "/elwebapitool/";
+// SPAのweb serverのURL
 let g_dataLogArray = []; // logを格納するarray
-let g_deviceInfo = {}; // deviceIdをkeyとして、以下の項目を保持
-  // {<deviceId>:{
-  //   "deviceType":<deviceType>, 
-  //   "propertyList":[<resourceName>], 
-  //   "propertyListWritable":[<resourceName>]
-  //   "actionList":[<resourceName>]}}
-let g_flagSendButtonIsClicked = false; // Request & ResponseとLOGに不要なデータを表示しないため
+let g_thingInfo = {}; 
+// thing id(device id, group id, bulk id, history id)をkeyとして、以下の項目を保持
+// serviceがdevice以外の場合は、"deviceType":""
+  // {
+  //   <thing id>:{
+  //     "deviceType":<deviceType>, 
+  //     "propertyList":[<resourceName>], 
+  //     "propertyListWritable":[<resourceName>]
+  //     "actionList":[<resourceName>]
+　// 　}
+　// }
+let g_flagSendButtonIsClicked = false; // Request & ResponseとLOGに不要なデータを表示しないためのflag
 
 let bind_data = {
   // data in config.json
@@ -29,7 +35,7 @@ let bind_data = {
   methodSelected: "GET",
   serviceList: [""], // [/devices, /groups]
   serviceSelected: "",
-  idInfoList: [], // [{deviceType:"/aircon", id:"0123"},... ] GET /devices のレスポンスを利用
+  idInfoList: [], // [{deviceType:"/aircon", id:"0123"},... ] GET /devices, groups, bulk, histories のレスポンスを利用
   idSelected: "",
   idToolTip: "XXX",
   deviceType: "",
@@ -121,6 +127,7 @@ const template_home = {
       displayLog();
     },
 
+    // Copy from responseボタンがクリックされたときの処理
     copyFromResponseButtonIsClicked: function () {
       this.body = JSON.stringify(vm.response);
     },
@@ -131,21 +138,21 @@ const template_home = {
       // serviceとdevice idがblankでなく、device descriptionが存在する場合
       if ((this.serviceSelected !== "") && (this.idSelected !== "")) {
         console.log("methodIsUpdated:idSelected", this.idSelected);
-        const deviceId = this.idSelected.slice(1); // remove "/" from idSelected
+        const thingId = this.idSelected.slice(1); // remove "/" from idSelected
         let resourceNameList = [""];
-        if (g_deviceInfo[deviceId] !== undefined) {
+        if (g_thingInfo[thingId] !== undefined) {
           switch (this.methodSelected) {
             case "GET":
               vm.body = "";
-              resourceNameList = g_deviceInfo[deviceId].propertyList;
+              resourceNameList = g_thingInfo[thingId].propertyList;
               vm.resourceTypeSelected = "/properties";
               break;
             case "PUT":
-              resourceNameList = g_deviceInfo[deviceId].propertyListWritable;
+              resourceNameList = g_thingInfo[thingId].propertyListWritable;
               vm.resourceTypeSelected = "/properties";
               break;
             case "POST":
-              resourceNameList = g_deviceInfo[deviceId].actionList;
+              resourceNameList = g_thingInfo[thingId].actionList;
               vm.resourceTypeSelected = "/actions";
               break;
             case "DELETE":
@@ -159,17 +166,15 @@ const template_home = {
     },
 
     // 入力フィールド service の値が変更された場合の処理
-    // ""が選択されたら、入力フィールドのId, Resource Type, Resource Name, queryをブランクにする
     serviceIsUpdated: function () {
-      if (this.serviceSelected == "") {
-        vm.idInfoList =[{}]
-        vm.resourceTypeList = [""];
-        vm.resourceNameList = [""];
-        vm.idSelected = "";
-        vm.resourceTypeSelected = "";
-        vm.resourceNameSelected = "";
-        vm.deviceType = "";
-      }
+      vm.idInfoList =[{}]
+      vm.resourceTypeList = [""];
+      vm.resourceNameList = [""];
+      vm.idSelected = "";
+      vm.resourceTypeSelected = "";
+      vm.resourceNameSelected = "";
+      vm.deviceType = "";
+      vm.body = "";
     },
 
     // 入力フィールド id の値が変更された場合の処理
@@ -177,15 +182,15 @@ const template_home = {
     // 選択されたidのdevice descriptionが存在する場合は、resourceTypeとresourceNameを更新する
     idIsUpdated: function () {
       console.log("idIsUpdated");
-      const deviceId = this.idSelected.slice(1); // remove "/"
+      const thingId = this.idSelected.slice(1); // remove "/"
       vm.resourceTypeList = [""];
       vm.resourceNameList = [""];
       vm.deviceType ="";
       vm.resourceTypeSelected = "";
       vm.resourceNameSelected = "";
 
-      updateDeviceType(deviceId);
-      const deviceInfo = g_deviceInfo[deviceId];
+      updateDeviceType(thingId);
+      const deviceInfo = g_thingInfo[thingId];
       if (deviceInfo !== undefined){
         let resourceTypeList = [""];
         if (deviceInfo.propertyList !== undefined) {
@@ -196,7 +201,7 @@ const template_home = {
         }
         vm.resourceTypeList = resourceTypeList;
         vm.resourceTypeSelected = (resourceTypeList[1]) ? resourceTypeList[1] : "";
-        updateResourceName(vm.methodSelected, deviceId, vm.resourceTypeSelected);
+        updateResourceName(vm.methodSelected, thingId, vm.resourceTypeSelected);
         vm.resourceNameSelected = (vm.resourceNameList[1]) ? vm.resourceNameList[1] : "";
       } 
     },
@@ -322,7 +327,7 @@ function accessElServer(scheme, elApiServer, apiKey, methodSelected, prefix, ser
     headers:  {
       "X-Elapi-key":    apiKey,
       "Content-Type":   "application/json",
-      "Content-Length": bodyData.length
+      "Content-Length": (new Blob([bodyData])).size
     },
     body:     bodyData
   };
@@ -424,16 +429,16 @@ function updateResourceName(methodSelected, idSelected, resourceTypeSelected) {
   console.log("updateResourceName ", methodSelected, idSelected, resourceTypeSelected)
   let resourceNameList = [];
   if (resourceTypeSelected !== "") {
-    const deviceInfo = g_deviceInfo[idSelected];
-    if (deviceInfo !== undefined) {
+    const thingInfo = g_thingInfo[idSelected];
+    if (thingInfo !== undefined) {
       if ((resourceTypeSelected == "/properties") && (methodSelected == "GET")) {
-        resourceNameList = deviceInfo.propertyList;
+        resourceNameList = thingInfo.propertyList;
       }  
       if ((resourceTypeSelected == "/properties") && (methodSelected == "PUT")) {
-        resourceNameList = deviceInfo.propertyListWritable;
+        resourceNameList = thingInfo.propertyListWritable;
       }
       if ((resourceTypeSelected == "/actions") && (methodSelected == "POST")) {
-        resourceNameList = deviceInfo.actionList;
+        resourceNameList = thingInfo.actionList;
       }
       vm.resourceNameList = resourceNameList;
       vm.resourceNameSelected = (resourceNameList[1]) ? resourceNameList[1] : "";   
@@ -476,7 +481,7 @@ request.send();
 
 // websocket:受信処理
 // index.js内のwebserverがECHONET Lite WebApi serverにRESTでアクセスし、
-// そのレスポンスをブラウザーにwebsocketでPUSH通信する。
+// そのレスポンスをブラウザーにwebsocketでPUSH通信する。そのwebsocketの受信処理。
 ws.onmessage = function(event){
   const obj = JSON.parse(event.data);
   console.log("Web socketの受信:", obj);
@@ -509,8 +514,8 @@ ws.onmessage = function(event){
   regex = /\/v1$/;   // 正規表現：行末が'/v1'
   if (regex.test(obj.path)) {
     let serviceList = [""];
-    if (obj.response.version !== undefined) {
-      for (let service of obj.response.version) {
+    if (obj.response.v1 !== undefined) {
+      for (let service of obj.response.v1) {
         serviceList.push("/" + service.name);
       }
     }
@@ -520,14 +525,31 @@ ws.onmessage = function(event){
     vm.serviceSelected = (serviceList[1]) ? serviceList[1] : "";
   }
 
-  // GET /elapi/v1/devices
-  // vm.idInfoListを新規に作成する 
+  // GET /elapi/v1/devices, groups, bulks, histories
+  // vm.idInfoListを新規に作成する
+  let service = "";
   regex = /\/devices$/;   // 正規表現：行末が'/devices'
   if (regex.test(obj.path)) {
+    service = "devices";
+  }
+  regex = /\/groups$/;   // 正規表現：行末が'/groups'
+  if (regex.test(obj.path)) {
+    service = "groups";
+  }
+  regex = /\/bulks$/;   // 正規表現：行末が'/bulks'
+  if (regex.test(obj.path)) {
+    service = "bulks";
+  }
+  regex = /\/histories$/;   // 正規表現：行末が'/histories'
+  if (regex.test(obj.path)) {
+    service = "histories";
+  }
+  if (service !== "") {
     vm.idInfoList = [{deviceType:"", id:""}];
-    if (obj.response.devices !== undefined) {
-      for (let device of obj.response.devices) {
-        const idInfo = { id:"/" + device.id, deviceType:device.deviceType };
+    if (obj.response[service] !== undefined) {
+      for (let thing of obj.response[service]) {
+        const deviceType = (thing.deviceType !== undefined) ? thing.deviceType : "";
+        const idInfo = { id:"/" + thing.id, deviceType:deviceType };
         vm.idInfoList.push(idInfo);
       }
     }
@@ -552,47 +574,67 @@ ws.onmessage = function(event){
     }
   }
 
-  // GET /elapi/v1/devices/<id>
-  // responseはdevice description -> g_deviceInfoに情報を追加
+  // GET /elapi/v1/devices, groups, bulks, histories/<id>
+  // responseはdevice,group,bulk,history description -> g_thingInfoに情報を追加
   // vm.resourceTypeListにresource typeをpushする
   // vm.resourceNameListにresource nameをpushする
+  service = "";
   regex = /\/devices\/([0-9]|[a-z]|[A-Z])+$/; // 正規表現'/devices/'の後、行末まで英数字
   if (regex.test(obj.path)) {
+    service = "devices";
+  }
+  regex = /\/groups\/([0-9]|[a-z]|[A-Z])+$/; // 正規表現'/groups/'の後、行末まで英数字
+  if (regex.test(obj.path)) {
+    service = "groups";
+  }
+  regex = /\/bulks\/([0-9]|[a-z]|[A-Z])+$/; // 正規表現'/bulks/'の後、行末まで英数字
+  if (regex.test(obj.path)) {
+    service = "bulks";
+  }
+  regex = /\/histories\/([0-9]|[a-z]|[A-Z])+$/; // 正規表現'/histories/'の後、行末まで英数字
+  if (regex.test(obj.path)) {
+    service = "histories";
+  }
+
+  // regex = /\/devices\/([0-9]|[a-z]|[A-Z])+$/; // 正規表現'/devices/'の後、行末まで英数字
+  // if (regex.test(obj.path)) {
+  if (service !== "") {
     const pathElements = obj.path.split('/');  // pathを'/'で分割して要素を配列にする
-    const deviceId = pathElements[pathElements.length - 1];  // 配列の最後の要素が deviceId
+    const thingId = pathElements[pathElements.length - 1];  // 配列の最後の要素が deviceId
     
-    // Device Desvriptionをもとにg_deviceInfoを更新する
-    const deviceDescription = obj.response;
-    let deviceInfo = {
-      "deviceType":deviceDescription.deviceType,
+    // Device Desvriptionをもとにg_thingInfoを更新する
+    const thingDescription = obj.response;
+    const deviceType = (thingDescription.deviceType !== undefined) ? thingDescription.deviceType : "";
+    let thingInfo = {
+      "deviceType":deviceType,
       "propertyList":[""],
       "propertyListWritable":[""],
       "actionList":[""]
     };
 
     // propertyList,propertyListWritableの作成
-    if (deviceDescription.properties !== undefined) {
-      for (let resourceName of Object.keys(deviceDescription.properties)) {
-        deviceInfo.propertyList.push("/" + resourceName);
-        if (deviceDescription.properties[resourceName].writable === true){
-          deviceInfo.propertyListWritable.push("/" + resourceName);
+    if (thingDescription.properties !== undefined) {
+      for (let resourceName of Object.keys(thingDescription.properties)) {
+        thingInfo.propertyList.push("/" + resourceName);
+        if (thingDescription.properties[resourceName].writable === true){
+          thingInfo.propertyListWritable.push("/" + resourceName);
         }
       }
     }
 
     // actionListの作成
-    if (deviceDescription.actions !== undefined) {
-      for (let resourceName of Object.keys(deviceDescription.actions)) {
-        deviceInfo.actionList.push("/" + resourceName);
+    if (thingDescription.actions !== undefined) {
+      for (let resourceName of Object.keys(thingDescription.actions)) {
+        thingInfo.actionList.push("/" + resourceName);
       }
     }
 
-    deviceInfo.propertyList.sort();    
-    deviceInfo.propertyListWritable.sort();    
-    deviceInfo.actionList.sort();    
+    thingInfo.propertyList.sort();    
+    thingInfo.propertyListWritable.sort();    
+    thingInfo.actionList.sort();    
 
-    g_deviceInfo[deviceId] = deviceInfo;
-    console.log("g_deviceInfo", g_deviceInfo);
+    g_thingInfo[thingId] = thingInfo;
+    console.log("g_thingInfo", g_thingInfo);
 
     // resourceTypeListを新規に作成する
     let resourceTypeList = [""];
@@ -609,12 +651,13 @@ ws.onmessage = function(event){
     vm.resourceTypeList = resourceTypeList;
     
     // 入力フィールドResouce TypeとResource Nameの表示項目の更新
-    updateResourceName("GET", deviceId, "/properties");
+    updateResourceName("GET", thingId, "/properties");
     vm.resourceTypeSelected = (resourceTypeList[1]) ? resourceTypeList[1] : "";
 
     // 入力フィールドidの下のdeviceTypeの更新
     vm.deviceType = obj.response.deviceType;
   }
+  
   g_flagSendButtonIsClicked = false;
 };
 
