@@ -2,11 +2,13 @@
 
 // index.js for ELWebAPITool
 // 2020.09.11
+// Copyright (c) 2020 Kanagawa Institute of Technology, ECHONET Consortium
+// Released under the MIT License.
 // access http://localhost:3010/elwebapitool
-// Hiroyuki Fujita
+ 
 'use strict';
 
-const VERSION = "2019.09.11";
+const VERSION = "1.0.0 rev.20200911";
 const portNumber = 3010;
 
 let express = require('express');
@@ -38,9 +40,9 @@ fs.readdir('.', function(err, files){
 
 // web serverの起動
 server.listen(port, function(){
-  console.log("\n******************************************************");
+  console.log("\n**************************************************************");
   console.log("*** elwebapitool " + VERSION + ", http://localhost:" + port + " ***");
-  console.log("******************************************************\n");
+  console.log("**************************************************************\n");
 });
 
 // ***** START of <routing for express> *****

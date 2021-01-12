@@ -1,5 +1,8 @@
 Release note
 
+2020.09.11
+groups, bulks, historiesに対応
+
 2020.08.20
 BUG Fix: Home画面でGET以外が選択された状態でSetting画面に移動した場合、機器一覧が表示されない
 

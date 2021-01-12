@@ -1,6 +1,7 @@
 // elwebapitool.js for elwebapitool(client side)
 // 2020.09.11
-// Created by Hiroyuki Fujita
+// Copyright (c) 2020 Kanagawa Institute of Technology, ECHONET Consortium
+// Released under the MIT License.
 // 
 // elwebapitool.jsは、ECHONET Lite WebAPI Toolのクライアント側JavaScript codeである。
 // サーバーはlocalhost/elwebapitool
