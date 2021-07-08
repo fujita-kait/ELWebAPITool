@@ -1,6 +1,10 @@
 Release note
 
-2020.09.11
+2021.07.08 V1.1.0
+機器仕様部 V1.3.0 で新規追加された以下の機器を、設定画面のデバイス追加リストに追加した。
+温度センサ（temperatureSensor）、電力量センサ（electricEnergySensor）、電流センサ（currentSensor）、空調換気扇（airConditionerVentilationFan）、冷温水熱源機（coldOrHotWaterHeatSourceEquipment）、電力量メータ（wattHourMeter）、分電盤メータリング（powerDistributionBoardMetering）、テレビ（tv）
+
+2020.09.11 V1.0.0
 groups, bulks, historiesに対応
 
 2020.08.20

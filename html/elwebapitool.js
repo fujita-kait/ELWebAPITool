@@ -1,6 +1,6 @@
 // elwebapitool.js for elwebapitool(client side)
-// 2020.09.11
-// Copyright (c) 2020 Kanagawa Institute of Technology, ECHONET Consortium
+// 2021.07.08
+// Copyright (c) 2021 Kanagawa Institute of Technology, ECHONET Consortium
 // Released under the MIT License.
 // 
 // elwebapitool.jsは、ECHONET Lite WebAPI Toolのクライアント側JavaScript codeである。
@@ -58,8 +58,13 @@ let bind_data = {
   addDevice: "", // デバイス追加で選択されたデバイス名
   addDeviceList: [  // デバイス追加に表示するデバイス名のリスト
     "",
-    "homeAirConditioner", 
+    "temperatureSensor",
+    "electricEnergySensor",
+    "currentSensor",
+    "homeAirConditioner",
+    "airConditionerVentilationFan",
     "instantaneousWaterHeater", 
+    "coldOrHotWaterHeatSourceEquipment",
     "fuelCell", 
     "storageBattery", 
     "evChargerDischarger", 
@@ -78,7 +83,9 @@ let bind_data = {
     "electricLock", 
     "bathroomHeaterDryer", 
     "pvPowerGeneration", 
+    "wattHourMeter",
     "floorHeater", 
+    "powerDistributionBoardMetering",
     "monoFunctionalLighting", 
     "refrigerator", 
     "cookingHeater", 
@@ -87,7 +94,8 @@ let bind_data = {
     "commercialShowcaseOutdoorUnit", 
     "switch", 
     "hybridWaterHeater", 
-    "washerDryer"
+    "washerDryer",
+    "tv"
   ],
   
   // CSS
