@@ -1,5 +1,5 @@
 // elwebapitool.js for elwebapitool(client side)
-// 2021.07.08
+// 2021.07.19
 // Copyright (c) 2021 Kanagawa Institute of Technology, ECHONET Consortium
 // Released under the MIT License.
 // 
@@ -353,7 +353,7 @@ function accessElServer(scheme, elApiServer, apiKey, methodSelected, prefix, ser
 // ECHONET Lite WebApi serverにアクセスして、実験クラウド専用のAPIで機器を削除する
 function accessElServerDeleteDevice(scheme, elApiServer, apiKey, prefix, deviceId) {
   console.log("accessElServerDeleteDevice: Delete ", deviceId)
-  let path = prefix + "/config/device/" + deviceId;
+  let path = prefix + "/config/device" + deviceId;
   const bodyData = "";
   let message = {
     hostname: elApiServer,
@@ -494,8 +494,8 @@ request.send();
 ws.onmessage = function(event){
   const obj = JSON.parse(event.data);
   console.log("Web socketの受信:", obj);
-  console.log(" REQ: " + obj.method + " https://" + obj.hostname + "/",obj.path );
-  console.log(" path:", obj.path);
+  console.log(" REQ: " + obj.method + " https://" + obj.hostname + obj.path );
+  // console.log(" path:", obj.path);
   console.log(" status code:", obj.statusCode);
   console.log(" response:", obj.response);
 

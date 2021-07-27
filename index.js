@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 
 // index.js for ELWebAPITool
-// 2021.07.08
+// 2021.07.19
 // Copyright (c) 2020 Kanagawa Institute of Technology, ECHONET Consortium
 // Released under the MIT License.
 // access http://localhost:3010/elwebapitool
  
 'use strict';
 
-const VERSION = "1.1.0 rev.20210708";
+const VERSION = "1.1.1 rev.20210719";
 const portNumber = 3010;
 
 let express = require('express');
