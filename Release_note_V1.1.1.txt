@@ -1,0 +1,19 @@
+ELWebAPITool リリースノート
+
+
+V 1.1.1
+機器仕様部 V1.3.0 で新規追加された以下の機器を設定画面のデバイス追加リストに追加。
+- 温度センサ（temperatureSensor）
+- 電力量センサ（electricEnergySensor）
+- 電流センサ（currentSensor）
+- 空調換気扇（airConditionerVentilationFan）
+- 冷温水熱源機（coldOrHotWaterHeatSourceEquipment）
+- 電力量メータ（wattHourMeter）
+- 分電盤メータリング（powerDistributionBoardMetering）
+- テレビ（tv）
+
+NOTE: 現在、実験クラウドは機器仕様部 Version 1.3.0 対応を実施済み。機器仕様部 Version 1.3.0 でプロパティが追加・変更された機器を過去に登録し利用している場合、該当デバイスを一度削除して追加しなおす必要あり。
+
+
+V 1.0.0 
+初版正式リリース
